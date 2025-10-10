@@ -135,7 +135,7 @@
     <ClCompile Include="DB.cpp" />
     <ClCompile Include="FIMask.cpp" />
     <ClCompile Include="FIMemoryManager.cpp" />
-    <ClCompile Include="FragmentIonIndexXL.cpp" />
+    <ClCompile Include="FragmentIonIndex.cpp" />
     <ClCompile Include="ResultsExporter.cpp" />
     <ClCompile Include="SpectrumGenerator.cpp" />
     <ClCompile Include="Telescope.cpp">
@@ -157,7 +157,7 @@
     <ClInclude Include="FIManager.h" />
     <ClInclude Include="FIMemoryManager.h" />
     <ClInclude Include="FISpectrum.h" />
-    <ClInclude Include="FragmentIonIndexXL.h" />
+    <ClInclude Include="FragmentIonIndex.h" />
     <ClInclude Include="GlobalDefinitions.h" />
     <ClInclude Include="FIMask.h" />
     <ClInclude Include="OSSpecificThreading.h" />

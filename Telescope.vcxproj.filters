@@ -36,7 +36,7 @@
     <ClCompile Include="FIManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FragmentIonIndexXL.cpp">
+    <ClCompile Include="FragmentIonIndex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SpectrumGenerator.cpp">
@@ -83,7 +83,7 @@
     <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FragmentIonIndexXL.h">
+    <ClInclude Include="FragmentIonIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SpectrumGenerator.h">

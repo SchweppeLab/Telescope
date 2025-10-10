@@ -2,7 +2,7 @@
 #define _RESULTSEXPORTER_H	
 
 #include "DataLoader.h"
-#include "FragmentIonIndexXL.h"
+#include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
 #include "NeoPepXMLParser.h"
 
@@ -12,7 +12,7 @@ public:
 	bool Write(const std::string& fn, DataLoader& scans);
 
 	DBManager* dbm; //temporary location
-	FragmentIonIndexXL* fii; //temporary
+	FragmentIonIndex* fii; //temporary
 
 private:
 

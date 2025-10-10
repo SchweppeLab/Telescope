@@ -182,15 +182,6 @@ int main(int argc, char* argv[]) {
 		double topScore = scans[a].precursor[0].ts[0].score;
 		//printf("Precursor %d is %s, TopPeptide: %s\t%.2lf\n", (int)a,precursors[a].peptide.c_str(),db[peptides[topIndex].instances[0].dbIndex].sequence.substr(peptides[topIndex].instances[0].start, peptides[topIndex].instances[0].len).c_str(), topScore * 0.005);
 		printf("Spectrum %d is %s, TopPeptide: %s\t%.4lf\t%.4lf\t%d\t%.6lf vs. %.6lf\n", (int)a, scans[a].precursor[0].peptide.c_str(), dbm.GetPeptideSequence(fim.fii->peptides[topIndex].peptideIndex, fim.fii->peptides[topIndex].maskIndex).c_str(), topScore,topScore * 0.005,(int)topIndex,scans[a].precursor[0].mass, fim.fii->peptides[topIndex].mass);
-		if (fim.fii->pepArrSzXL > 0 && scans[a].precursor[0].scoreCountXL>0) {
-			topIndex = scans[a].precursor[0].tsXL[0].indexA;
-			size_t topIndexB = scans[a].precursor[0].tsXL[0].indexB;
-			topScore = scans[a].precursor[0].tsXL[0].scoreA + scans[a].precursor[0].tsXL[0].scoreB;
-			topScore = round(topScore * 5) / 1000.0;  // round to 3 decimal points like Comet
-			if (scans[a].precursor[0].tsXL[0].scoreA < 0 || scans[a].precursor[0].tsXL[0].scoreB<0) continue;
-			printf("  SpectrumXL %d is %s, TopXL: %s-%s\t%.4lf\n", (int)a, scans[a].precursor[0].peptide.c_str(), dbm.GetPeptideSequence(fim.fii->peptidesXL[topIndex].peptideIndex).c_str(), dbm.GetPeptideSequence(fim.fii->peptidesXL[topIndexB].peptideIndex).c_str(), topScore);
-			printf("  Mass: %.6lf vs. %.6lf\t%d\n", scans[a].precursor[0].mass, fim.fii->peptidesXL[topIndex].mass + fim.fii->peptidesXL[topIndexB].mass,(int)topIndex);
-		}
 	}
 
 	if (scans.Size() > 20) {
@@ -199,15 +190,6 @@ int main(int argc, char* argv[]) {
 			double topScore = scans[a].precursor[0].topScore;
 			//printf("Precursor %d is %s, TopPeptide: %s\t%.2lf\n", (int)a, precursors[a].peptide.c_str(), db[peptides[topIndex].instances[0].dbIndex].sequence.substr(peptides[topIndex].instances[0].start, peptides[topIndex].instances[0].len).c_str(), topScore * 0.005);
 			printf("Spectrum %d is %s, TopPeptide: %s\t%.4lf\t%d\n", (int)a, scans[a].precursor[0].peptide.c_str(), dbm.GetPeptideSequence(fim.fii->peptides[topIndex].peptideIndex, fim.fii->peptides[topIndex].maskIndex).c_str(), topScore * 0.005, (int)topIndex);
-			if (fim.fii->pepArrSzXL > 0 && scans[a].precursor[0].scoreCountXL > 0) {
-				topIndex = scans[a].precursor[0].tsXL[0].indexA;
-				size_t topIndexB = scans[a].precursor[0].tsXL[0].indexB;
-				topScore = scans[a].precursor[0].tsXL[0].scoreA + scans[a].precursor[0].tsXL[0].scoreB;
-				topScore = round(topScore*5) / 1000.0;  // round to 3 decimal points like Comet
-				if (scans[a].precursor[0].tsXL[0].scoreA < 0 || scans[a].precursor[0].tsXL[0].scoreB < 0) continue;
-				printf("  SpectrumXL %d is %s, TopXL: %s-%s\t%.4lf\n", (int)a, scans[a].precursor[0].peptide.c_str(), dbm.GetPeptideSequence(fim.fii->peptidesXL[topIndex].peptideIndex).c_str(), dbm.GetPeptideSequence(fim.fii->peptidesXL[topIndexB].peptideIndex).c_str(), topScore);
-				printf("  Mass: %.6lf vs. %.6lf\t%d\n", scans[a].precursor[0].mass, fim.fii->peptidesXL[topIndex].mass + fim.fii->peptidesXL[topIndexB].mass, (int)topIndex);
-			}
 		}
 	}
 

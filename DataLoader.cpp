@@ -9,7 +9,7 @@ Mutex DataLoader::mutexThreads;
 bool* DataLoader::activeThread;
 size_t DataLoader::threads;
 
-DataLoader::DataLoader(FragmentIonIndexXL* f, const size_t th) {
+DataLoader::DataLoader(FragmentIonIndex* f, const size_t th) {
 	fii = f;
 	threads = th;
 	if (threads < 1) threads = 1;
@@ -111,20 +111,6 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			while (fii->peptides[index++].mass < max) count++;
 			scans[scanIndex].precursor.back().scoreCount = count;
 			if (count > maxScoreCount) maxScoreCount = count;
-
-			if (fii->pepArrSzXL > 0 && mass > MINPEPMASS * 2) {
-				min = mass / 2;
-				max = mass - MINPEPMASS;
-				min -= (min / 1e6 * PPM);
-				max += (max / 1e6 * PPM);
-				index = fii->FindPeptideIndexXL(min);
-				while (fii->peptidesXL[index].mass < min) index++;
-				scans[scanIndex].precursor.back().pepOffsetXL = index;
-				count = 0;
-				while (fii->peptidesXL[index++].mass < max) count++;
-				scans[scanIndex].precursor.back().scoreCountXL = count;
-				if (count > maxScoreCountXL) maxScoreCountXL = count;
-			}
 
 			//Add the peaks
 			for (int a = 0;a < s.size();a++) {

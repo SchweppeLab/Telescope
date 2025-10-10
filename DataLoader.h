@@ -3,7 +3,7 @@
 
 #include "FastXCorr.h"
 #include "FISpectrum.h"
-#include "FragmentIonIndexXL.h"
+#include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
 #include "MSReader.h"
 #include "Threading.h"
@@ -28,7 +28,7 @@ struct sSpectrumStruct {
 
 class DataLoader {
 public:
-	DataLoader(FragmentIonIndexXL* f, const size_t th=1);
+	DataLoader(FragmentIonIndex* f, const size_t th=1);
 	~DataLoader();
 
 	FISpectrum& operator[](const size_t& index);
@@ -48,7 +48,7 @@ private:
 	static void ProcessSpectrum(FISpectrum& s, int tIndex);
 	static void ProcessSpectrumProc(sSpectrumStruct* s);
 
-	FragmentIonIndexXL* fii;
+	FragmentIonIndex* fii;
 	static FastXCorr* xcorr; //array of xcorr transformers, one per thread
 	std::vector<FISpectrum> scans;
 
