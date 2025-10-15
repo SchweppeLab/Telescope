@@ -6,6 +6,7 @@
 #include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
 #include "MSReader.h"
+#include "ParamsManager.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 
@@ -28,27 +29,29 @@ struct sSpectrumStruct {
 
 class DataLoader {
 public:
-	DataLoader(FragmentIonIndex* f, const size_t th=1);
+	DataLoader();
+	//DataLoader(DBManager* d, FragmentIonIndex* f, const size_t th=1);
 	~DataLoader();
 
 	FISpectrum& operator[](const size_t& index);
 
+	bool Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p);
 	bool ReadSpectra(const std::string& fn);
 	size_t Size();
 
 	size_t maxScoreCount = 0;
-	size_t maxScoreCountXL = 0;
-
-	DBManager* dbm; //temporary for testing only
 
 protected:
 private:
 
-	void Init();
+	void Allocate();
+	void Deallocate();
 	static void ProcessSpectrum(FISpectrum& s, int tIndex);
 	static void ProcessSpectrumProc(sSpectrumStruct* s);
 
-	FragmentIonIndex* fii;
+	DBManager* dbm = nullptr;
+	FragmentIonIndex* fii = nullptr;
+	ParamsManager* params = nullptr;
 	static FastXCorr* xcorr; //array of xcorr transformers, one per thread
 	std::vector<FISpectrum> scans;
 

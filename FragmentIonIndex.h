@@ -5,6 +5,7 @@
 #include "FIMask.h"
 #include "FISpectrum.h"
 #include "GlobalDefinitions.h"
+#include "ParamsManager.h"
 
 #include <algorithm>
 #include <map>
@@ -28,7 +29,7 @@ typedef struct FIIPepRef {
 class FragmentIonIndex {
 public:
 	FragmentIonIndex(); //dangerous default constructor: must manually set DBManager.
-	FragmentIonIndex(DBManager* d);
+	FragmentIonIndex(DBManager* d, ParamsManager* p);
 	~FragmentIonIndex();
 
 	void CalculateIndex(unsigned int start, unsigned int stop, unsigned int* arr, FIMask& mask);
@@ -83,6 +84,7 @@ private:
 	static bool sortFIIPeptideMass(const FIIPeptide& a, const FIIPeptide& b);
 
 	DBManager* dbm;
+	ParamsManager* params;
 
 };
 

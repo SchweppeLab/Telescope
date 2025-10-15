@@ -8,7 +8,6 @@ FIMemoryManager::FIMemoryManager() {
 
 FIMemoryManager::~FIMemoryManager() {
 	DeallocateScores();
-	DeallocateScoresXL();
 }
 
 bool FIMemoryManager::AllocateScores(int threadCount, size_t sz) {
@@ -20,23 +19,10 @@ bool FIMemoryManager::AllocateScores(int threadCount, size_t sz) {
 	return true;
 }
 
-bool FIMemoryManager::AllocateScoresXL(int threadCount, size_t sz) {
-	DeallocateScoresXL();
-	threadsXL = threadCount;
-	sizeXL = sz;
-	scoresXL = new float* [threadsXL];
-	for (size_t a = 0;a < threadsXL;a++) scoresXL[a] = new float[sizeXL];
-	return true;
-}
-
 void FIMemoryManager::DeallocateScores() {
-	if (scores != nullptr) {
-		for (size_t a = 0;a < threads;a++) delete[] scores;
-	}
-}
-
-void FIMemoryManager::DeallocateScoresXL() {
-	if (scoresXL != nullptr) {
-		for (size_t a = 0;a < threadsXL;a++) delete[] scoresXL;
+	if (scores) {
+		for (size_t a = 0;a < threads;a++) delete[] scores[a];
+		delete[] scores;
+		scores = nullptr;
 	}
 }

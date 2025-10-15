@@ -3,6 +3,7 @@
 
 #include "FISpectrum.h"
 #include "GlobalDefinitions.h"
+#include "ParamsManager.h"
 
 //TODO: This no longer needs its own structure. GET RID OF IT!!
 typedef struct XCorrPreprocessStruct { //adapted from Comet
@@ -17,9 +18,8 @@ public:
 	FastXCorr();
 	~FastXCorr();
 
+	bool Initialize(ParamsManager* p);
 	bool ProcessSpectrum(FISpectrum& spec);
-
-	//float minPeak = 1e-6;
 
 protected:
 private:
@@ -33,6 +33,7 @@ private:
 	void BinIons(std::vector<FIPeak>& spec, double& max);
 	void MakeCorrData(double scale);
 
+	ParamsManager* params = nullptr;
 	size_t maxBin = 0;
 
 	double* pdTempRawData = nullptr;

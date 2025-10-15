@@ -5,6 +5,7 @@
 #include "FISpectrum.h"
 #include "ResultsExporter.h"
 #include "SpectrumGenerator.h"
+#include "TelescopeManager.h"
 
 #include "GlobalDefinitions.h"
 
@@ -26,20 +27,11 @@ typedef struct sPrecursor {
 	string peptide;
 } sPrecursor;
 
-void addPrecursor(const string& pep, double mass, int charge);
-void addSpectrum(const size_t& index);
-int  customScan(string fn);   //returns the maximum number of peptides scores to be computed for the spectrum.
 void eValue(sTop* arr, size_t count);
-void init();
 void linearRegression2(double& slope, double& intercept, int& iMaxXcorr, int& iStartXcorr, int& iNextXcorr, double& rSquared);
 bool sortScores(const sTop& a, const sTop& b);
 
 vector<sPrecursor> precursors;  //list of all candidate precursor ions; allows for multiple precursors for a single spectrum
-//vector<FISpectrum> scans;           //the scan data
-double AA[128] = { 0 };
-
-//For XCorr preprocessing: Make one per thread for multithreading
-//FastXCorr* fx;
 
 int histogram[HISTOSZ];
 int histogramCount;
@@ -47,8 +39,19 @@ double dCummulative[HISTOSZ];
 
 int main(int argc, char* argv[]) {
 
-	//initialize the test applicaiton
-	init();
+	string params = argv[1];
+	TelescopeManager tm;
+	if (!tm.SetParams(params)) {
+		cout << "Failed to set params: " << params << endl;
+		return 1;
+	}
+	cout << tm.Launch(true) << endl;
+	return 0;
+
+
+
+	/*
+
 	long long bytes = 0;  //used at various stages to compute memory usage.
 
 	//For timings:
@@ -56,7 +59,15 @@ int main(int argc, char* argv[]) {
 	chrono::milliseconds duration_milliseconds;
 	chrono::microseconds duration_microseconds;
 
-	//Set up our search space parameters
+
+	//---------------------
+	// STEP #1: Read in user parameters
+	//TODO: ADD PARAMETERS
+	//---------------------
+
+	//---------------------
+	// STEP #2: Read in FASTA database.
+	//---------------------
 	cout << "Digesting FASTA file...";
 	DBManager dbm;
 	dbm.minPepMass = MINPEPMASS;
@@ -91,12 +102,6 @@ int main(int argc, char* argv[]) {
 	cout << dbm.totalPeptidoforms << " standard Peptidoforms." << endl;
 	//cout << dbm.totalPeptidoformsXL << " crosslinked Peptidoforms." << endl;
 
-	/*SpectrumGenerator sg(&dbm);
-	sg.echo = true;
-	sg.GenerateSpectrum("PEPTIDEK",2);
-	sg.GenerateSpectrum("VVSAAHCYKSR", 8, "FINAAKIITHPR",5,4,0);
-	exit(1);*/
-
 	//This is where we create the fragment ion index. The FIManager is a controller class that coordinates
 	//several subclasses involved in the management of the indexed search. It needs two inputs at construction:
 	//A DBManager object, and the number of threads for computation. Then, set the bin size desired and generate
@@ -125,8 +130,7 @@ int main(int argc, char* argv[]) {
 	//spectra, the fragment ion index is required to determine the peptide indexes to search.
 	cout << "Processing Scans...";
 	start_time = chrono::high_resolution_clock::now();
-	DataLoader scans(fim.fii,THREADS);
-	scans.dbm = &dbm; //temporary
+	DataLoader scans(&dbm,fim.fii,THREADS);
 	string fn = argv[2];
 	scans.ReadSpectra(fn);  	//Load spectra
 	end_time = std::chrono::high_resolution_clock::now();
@@ -146,8 +150,8 @@ int main(int argc, char* argv[]) {
 	//Allocate memory for search scores. Note that we now use (and reuse) central memory storage for the
 	//peptide scores for a spectrum. Once the spectrum analysis is over, this memory is used for a different scan
 	//and the scores are lost.
-	cout << "Allocating score memory, size per thread: " << scans.maxScoreCount << " and " << scans.maxScoreCountXL << "...";
-	fim.AllocateScoreMemory(scans.maxScoreCount, scans.maxScoreCountXL);
+	cout << "Allocating score memory, size per thread: " << scans.maxScoreCount << "...";
+	fim.AllocateScoreMemory(scans.maxScoreCount);
 	cout << "Done" << endl;
 
 	//The actual search starts here.
@@ -250,6 +254,7 @@ int main(int argc, char* argv[]) {
 	cout << "Start memory cleanup...";
 	cout << "Done" << endl;
 	return 0;
+	*/
 
 }
 
@@ -428,31 +433,6 @@ void eValue(sTop* arr, size_t count) {
 		}
 	}
 
-}
-
-void init() {
-	//Amino acid masses
-	AA['A'] = 71.0371103;
-	AA['C'] = 103.0091803;
-	AA['D'] = 115.0269385;
-	AA['E'] = 129.0425877;
-	AA['F'] = 147.0684087;
-	AA['G'] = 57.0214611;
-	AA['H'] = 137.0589059;
-	AA['I'] = 113.0840579;
-	AA['K'] = 128.0949557;
-	AA['L'] = 113.0840579;
-	AA['M'] = 131.0404787;
-	AA['N'] = 114.0429222;
-	AA['P'] = 97.0527595;
-	AA['Q'] = 128.0585714;
-	AA['R'] = 156.1011021;
-	AA['S'] = 87.0320244;
-	AA['T'] = 101.0476736;
-	AA['U'] = 150.9536303;
-	AA['V'] = 99.0684087;
-	AA['W'] = 186.0793065;
-	AA['Y'] = 163.0633228;
 }
 
 void linearRegression2(double& slope, double& intercept, int& iMaxXcorr, int& iStartXcorr, int& iNextXcorr, double& rSquared) {

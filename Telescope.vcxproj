@@ -136,6 +136,7 @@
     <ClCompile Include="FIMask.cpp" />
     <ClCompile Include="FIMemoryManager.cpp" />
     <ClCompile Include="FragmentIonIndex.cpp" />
+    <ClCompile Include="ParamsManager.cpp" />
     <ClCompile Include="ResultsExporter.cpp" />
     <ClCompile Include="SpectrumGenerator.cpp" />
     <ClCompile Include="Telescope.cpp">
@@ -146,6 +147,7 @@
     <ClCompile Include="FastXCorr.cpp" />
     <ClCompile Include="FIManager.cpp" />
     <ClCompile Include="FISpectrum.cpp" />
+    <ClCompile Include="TelescopeManager.cpp" />
     <ClCompile Include="Threading.cpp" />
     <ClCompile Include="TopScore.cpp" />
   </ItemGroup>
@@ -161,8 +163,10 @@
     <ClInclude Include="GlobalDefinitions.h" />
     <ClInclude Include="FIMask.h" />
     <ClInclude Include="OSSpecificThreading.h" />
+    <ClInclude Include="ParamsManager.h" />
     <ClInclude Include="ResultsExporter.h" />
     <ClInclude Include="SpectrumGenerator.h" />
+    <ClInclude Include="TelescopeManager.h" />
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="TopScore.h" />

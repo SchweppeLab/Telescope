@@ -5,6 +5,7 @@
 #include "DBManager.h"
 #include "FIMemoryManager.h"
 #include "FragmentIonIndex.h"
+#include "ParamsManager.h"
 #include "Threading.h"
 #include "ThreadPool.h"
 
@@ -63,22 +64,23 @@ struct sGenIndex {
 
 class FIManager {
 public:
-	FIManager(DBManager* d, const size_t count = 1);
+	FIManager();
 	~FIManager();
 
-	bool AllocateScoreMemory(const size_t& sz, const size_t& szXL=0);
+	void Allocate();
+	bool AllocateScoreMemory(const size_t& sz);
+	void Deallocate();
 	bool GeneratePeptideMap();
 	bool GenerateIndex();
+	void Initialize(DBManager* d, ParamsManager* p);
 	bool ScoreSpectrum(std::vector<FISpectrum>& scans);
 	bool ScoreSpectrum(DataLoader& scans);
-	void SetBinSize(double d);
 
-	FragmentIonIndex* fii;  //generate an array, one per thread
+	FragmentIonIndex* fii = nullptr;  //generate an array, one per thread
 
 protected:
 private:
 
-	void Init();
 	void LocalGenerateIndex();
 
 	//Processes run during multithreading
@@ -87,7 +89,8 @@ private:
 	static void ScoreSpectrumProcess(sSearchStruct* s);
 
 
-	DBManager* dbm = NULL;
+	DBManager* dbm = nullptr;
+	ParamsManager* params = nullptr;
 	static FIMemoryManager mem;
 	
 	static Mutex mutexThreads;

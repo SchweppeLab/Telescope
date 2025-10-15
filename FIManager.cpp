@@ -8,24 +8,27 @@ Mutex FIManager::mutexThreads;
 bool* FIManager::activeThread;
 size_t FIManager::threads;
 
-FIManager::FIManager(DBManager* d, const size_t count) {
-	dbm = d;
-	threads = count;
-	if (threads < 1) threads = 1;
-
-	Init();
+FIManager::FIManager() {
+	threads = 1;
+	activeThread = nullptr;
 }
 
 FIManager::~FIManager() {
-	if (fii != NULL) delete fii; //delete[] fii;
 	dbm = NULL;
-	delete[] activeThread;
-	Threading::DestroyMutex(mutexThreads);
+	Deallocate();
 }
 
-bool FIManager::AllocateScoreMemory(const size_t& sz, const size_t& szXL) {
+void FIManager::Allocate() {
+	Deallocate();
+	fii = new FragmentIonIndex(dbm,params);
+	fii->SetBinSize(params->binSize);
+	threads = params->threads;
+	activeThread = new bool[threads]();
+	Threading::CreateMutex(&mutexThreads);
+}
+
+bool FIManager::AllocateScoreMemory(const size_t& sz) {
 	mem.AllocateScores(threads, sz);
-	if (szXL > 0) mem.AllocateScoresXL(threads, szXL);
 	return true;
 }
 
@@ -37,6 +40,14 @@ void FIManager::CalcIndexProcess(sGenIndex* s) {
 void FIManager::CalcIndexSzProcess(sGenIndex* s) {
 	s->fii->CalculateIndex(s->start, s->stop, s->arr, *s->mask);
 	delete s;
+}
+
+void FIManager::Deallocate() {
+	if (fii) delete fii;
+	if (activeThread) {
+		delete[] activeThread;
+		Threading::DestroyMutex(mutexThreads);
+	}
 }
 
 //Generating the index is a complex process so that it can be multithreaded. Two functions do the work, one
@@ -52,14 +63,10 @@ bool FIManager::GeneratePeptideMap() {
 	return true;
 }
 
-
-void FIManager::Init() {
-	fii = new FragmentIonIndex(dbm); // [threads] ;
-	activeThread = new bool[threads]();
-	//for (size_t a = 0;a < threads;a++) fii[a].SetDBManager(dbm);
-	cout << threads << " threads initialized." << endl;
-
-	Threading::CreateMutex(&mutexThreads);
+void FIManager::Initialize(DBManager* d, ParamsManager* p) {
+	dbm = d;
+	params = p;
+	Allocate();
 }
 
 //Generating the fragment ion index from here is multi-threaded. It divides the peptidoforms in the 
@@ -197,8 +204,4 @@ void FIManager::ScoreSpectrumProcess(sSearchStruct* s) {
 	s->fii->ScoreSpectrum(*s->scan,mem.scores[i]);
 	delete s;
 	s = nullptr;
-}
-
-void FIManager::SetBinSize(double d) {
-	fii->SetBinSize(d);
 }

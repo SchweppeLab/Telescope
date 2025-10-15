@@ -6,14 +6,16 @@ FragmentIonIndex::FragmentIonIndex() {
 
 }
 
-FragmentIonIndex::FragmentIonIndex(DBManager* d) {
+FragmentIonIndex::FragmentIonIndex(DBManager* d, ParamsManager* p) {
 	dbm = d;
+	params = p;
 }
 
 FragmentIonIndex::~FragmentIonIndex() {
 	DeleteIndex();
-	if (peptides != NULL) delete[] peptides;
-	dbm = NULL;
+	if (peptides) delete[] peptides;
+	dbm = nullptr;
+	params = nullptr;
 }
 
 //Computes the memory requirement (number of peptides in each bin) for a subset of peptidoforms.
@@ -69,7 +71,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
 				//if(mass>800) cout << mz << "\t" << z << "\t" << (size_t)(mz * invBinSize) << endl;
-				if (mz > MINMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < MAXMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -79,7 +81,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > MINMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < MAXMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -264,14 +266,14 @@ void FragmentIonIndex::Indexer(bool preCompute) {
 
 			for (int z = 0;z < 3;z++) {
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
-				if (mz > MINMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < MAXMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (preCompute) binSz[z][bin]++;
 					else bins[z][bin][binSz[z][bin]++] = a;
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > MINMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < MAXMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (preCompute) binSz[z][bin]++;
 					else bins[z][bin][binSz[z][bin]++] = a;
@@ -349,7 +351,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 				if (hasMods) modMass += mods[b];
 
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
-				if (mz > MINMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < MAXMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -361,7 +363,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > MINMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < MAXMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;

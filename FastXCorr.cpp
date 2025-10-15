@@ -4,12 +4,10 @@
 using namespace std;
 
 FastXCorr::FastXCorr() {
-	double invBinSize = 1 / BINSIZE;
-	maxBin = (size_t)(invBinSize * MAXMZ + 1 + 0.5);
-	Allocate();
 }
 
 FastXCorr::~FastXCorr() {
+	params = nullptr;
 	Deallocate();
 }
 
@@ -33,6 +31,14 @@ void FastXCorr::Deallocate() {
 	pfFastXcorrData = nullptr;
 	pps.pdCorrelationData = nullptr;
 	pps.pdMzData = nullptr;
+}
+
+bool FastXCorr::Initialize(ParamsManager* p) {
+	params = p;
+	double invBinSize = 1 / params->binSize;
+	maxBin = (size_t)(invBinSize * MAXMZ + 1 + 0.5);
+	Allocate();
+	return true;
 }
 
 bool FastXCorr::ProcessSpectrum(FISpectrum& spec) {
@@ -112,8 +118,8 @@ void FastXCorr::BinIons(vector<FIPeak>& spec, double& max) {
 		size_t iBinIon = spec[i].fIndex;
 		dIntensity = spec[i].value;
 		pdMzData[iBinIon] = spec[i].mz;
-		pdMzData[iBinIon - 1] = spec[i].mz - BINSIZE;
-		pdMzData[iBinIon + 1] = spec[i].mz + BINSIZE;
+		pdMzData[iBinIon - 1] = spec[i].mz - params->binSize;
+		pdMzData[iBinIon + 1] = spec[i].mz + params->binSize;
 
 		if (dIntensity > 0.0) {
 			if (iBinIon < maxBin) {

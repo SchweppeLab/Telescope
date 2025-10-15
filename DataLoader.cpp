@@ -9,30 +9,45 @@ Mutex DataLoader::mutexThreads;
 bool* DataLoader::activeThread;
 size_t DataLoader::threads;
 
-DataLoader::DataLoader(FragmentIonIndex* f, const size_t th) {
-	fii = f;
-	threads = th;
-	if (threads < 1) threads = 1;
-
-	Init();
+DataLoader::DataLoader() {
+	xcorr = nullptr;
+	activeThread = nullptr;
 }
 
 DataLoader::~DataLoader() {
+	dbm = nullptr;
 	fii = nullptr;
-	delete[] xcorr;
-	delete[] activeThread;
-	Threading::DestroyMutex(mutexThreads);
+	params = nullptr;
+	Deallocate();
 }
 
 FISpectrum& DataLoader::operator[](const size_t& index) {
 	return scans[index];
 }
 
-void DataLoader::Init() {
+void DataLoader::Allocate() {
+	Deallocate();
+	threads = (size_t)params->threads;
 	xcorr = new FastXCorr[threads]();
+	for (size_t a = 0;a < threads;a++) xcorr[a].Initialize(params);
 	activeThread = new bool[threads]();
-
 	Threading::CreateMutex(&mutexThreads);
+}
+
+void DataLoader::Deallocate() {
+	if (xcorr) delete[] xcorr;
+	if (activeThread) {
+		delete[] activeThread;
+		Threading::DestroyMutex(mutexThreads);
+	}
+}
+
+bool DataLoader::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p) {
+	params = p;
+	dbm = d;
+	fii = f;
+	Allocate();
+	return true;
 }
 
 void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
@@ -58,15 +73,16 @@ void DataLoader::ProcessSpectrumProc(sSpectrumStruct* s) {
 	s = nullptr;
 }
 
+//This could be far more efficient by reading into temporary memory, transforming, then appending
+//an array of processed scans. With lots and lots of memory, perhaps even precompute each scan size?
 bool DataLoader::ReadSpectra(const string& fn) {
 	MSReader r;
 	Spectrum s;
 
 	//These are used for memory allocation later.
 	maxScoreCount = 0;
-	maxScoreCountXL = 0;
 
-	double invBinSize = 1 / BINSIZE;
+	double invBinSize = 1 / params->binSize;
 	scans.clear();
 	
 	r.setFilter(MS2);
@@ -114,6 +130,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 
 			//Add the peaks
 			for (int a = 0;a < s.size();a++) {
+				if (s[a].mz > MAXMZ) break; //assuming mz values are in order from low to high.
 				FIPeak p;
 				p.mz = s[a].mz;
 				p.fIndex = s[a].mz * invBinSize + 1;
@@ -134,9 +151,11 @@ bool DataLoader::ReadSpectra(const string& fn) {
 		NEXTSCAN:
 		r.readFile(NULL, s);
 	}
+
 	if (XCORR) {
 		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, threads, threads, 1);
 		for (size_t a = 0;a < scans.size();a++) {
+			//cout << a << "\t" << scans[a].scanNumber << "\t" << scans[a].Size() << endl;
 			spectraPool->WaitForQueuedParams();
 			sSpectrumStruct* sp = new sSpectrumStruct(&scans[a]);
 			spectraPool->Launch(sp);
@@ -145,6 +164,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 		spectraPool->WaitForThreads();
 		delete spectraPool;
 	}
+
 	return true;
 }
 
