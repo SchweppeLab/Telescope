@@ -9,7 +9,7 @@ bool* FIManager::activeThread;
 size_t FIManager::threads;
 
 /// <summary>
-/// Default constructor. FIManager::Initialize() must be called prior to use.
+/// Default constructor. FIManager::Initialize() must be called after construction to use the FIManager object.
 /// </summary>
 FIManager::FIManager() {
 	threads = 1;
@@ -30,8 +30,6 @@ FIManager::~FIManager() {
 /// </summary>
 void FIManager::Allocate() {
 	Deallocate();
-	fii = new FragmentIonIndex(dbm,params);
-	fii->SetBinSize(params->binSize);
 	threads = params->threads;
 	activeThread = new bool[threads]();
 	Threading::CreateMutex(&mutexThreads);
@@ -69,7 +67,7 @@ void FIManager::CalcIndexSzProcess(sGenIndex* s) {
 /// Frees memory resources in use.
 /// </summary>
 void FIManager::Deallocate() {
-	if (fii) delete fii;
+	//if (fii) delete fii;
 	if (activeThread) {
 		delete[] activeThread;
 		Threading::DestroyMutex(mutexThreads);
@@ -82,7 +80,7 @@ void FIManager::Deallocate() {
 /// </summary>
 /// <returns>true if successful</returns>
 bool FIManager::GenerateIndex() {	
-	if (fii->pepArrSz > 0) LocalGenerateIndex();
+	if (fii.pepArrSz > 0) InternalGenerateIndex();
 	else return false;
 	return true;
 }
@@ -92,7 +90,7 @@ bool FIManager::GenerateIndex() {
 /// </summary>
 /// <returns>true if successful</returns>
 bool FIManager::GeneratePeptideMap() {
-	return fii->GeneratePeptideMap();
+	return fii.GeneratePeptideMap();
 }
 
 /// <summary>
@@ -104,6 +102,7 @@ bool FIManager::GeneratePeptideMap() {
 void FIManager::Initialize(DBManager* d, ParamsManager* p) {
 	dbm = d;
 	params = p;
+	fii.Initialize(d, p);
 	Allocate();
 }
 
@@ -114,23 +113,23 @@ void FIManager::Initialize(DBManager* d, ParamsManager* p) {
 /// using the offsets determined at the memory calculation stage. No two threads will ever access the same
 /// block of memory, no semaphores are needed, and the processes are entirely parallel.
 /// </summary>
-void FIManager::LocalGenerateIndex() {
+void FIManager::InternalGenerateIndex() {
 
 	//Generate index to temporary memory, then add them all up in order
 	size_t th = threads;
 	size_t z = 3;
-	size_t maxBin = fii->maxBin;
+	size_t maxBin = fii.maxBin;
 	unsigned int* binSz = new unsigned int[th * z * maxBin]();
 	FIMask* mask = new FIMask[threads];
-	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * 3, fii->maxBin);
+	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * 3, fii.maxBin);
 
 	//Determine the index sizes at each bin within each thread
 	ThreadPool<sGenIndex*>* pool = new ThreadPool<sGenIndex*>(CalcIndexSzProcess, threads, threads, 1);
-	unsigned int set = (unsigned int)(fii->pepArrSz / threads);
+	unsigned int set = (unsigned int)(fii.pepArrSz / threads);
 	unsigned int pos = 0;
 	for (int a = 0;a < th;a++) {
-		sGenIndex* s = new sGenIndex(fii, pos, pos + set, &binSz[a * z * maxBin],&mask[a]);
-		if (a == th - 1) s->stop = (unsigned int)fii->pepArrSz;
+		sGenIndex* s = new sGenIndex(&fii, pos, pos + set, &binSz[a * z * maxBin],&mask[a]);
+		if (a == th - 1) s->stop = (unsigned int)fii.pepArrSz;
 		pool->Launch(s);
 		pos += set;
 	}
@@ -138,7 +137,7 @@ void FIManager::LocalGenerateIndex() {
 	pool->WaitForThreads();
 	delete pool;
 
-	//roll-up all binSz to the last array index, such that each thread starts at the point in the final
+	//Roll-up all binSz to the last array index, such that each thread starts at the point in the final
 	//array where the last thread finishes.
 	for (int a = 1;a < th;a++) {
 		for (int b = 0;b < z;b++) {
@@ -153,13 +152,13 @@ void FIManager::LocalGenerateIndex() {
 	size_t frags = 0;
 	size_t bytes = 0;
 	for (int a = 0;a < 3;a++) {
-		fii->bins[a] = new unsigned int* [maxBin];
-		fii->binSz[a] = new unsigned int[maxBin]();
+		fii.bins[a] = new unsigned int* [maxBin];
+		fii.binSz[a] = new unsigned int[maxBin]();
 
 		for (size_t b = 0;b < maxBin;b++) {
 			unsigned int sz = binSz[lastBin * z * maxBin + a * maxBin + b];
 			if (sz > 0) {
-				fii->bins[a][b] = new unsigned int[sz];
+				fii.bins[a][b] = new unsigned int[sz];
 				frags += sz;
 				bytes += sz * sizeof(unsigned int);
 			}
@@ -174,9 +173,9 @@ void FIManager::LocalGenerateIndex() {
 	ThreadPool<sGenIndex*>* pool2 = new ThreadPool<sGenIndex*>(CalcIndexProcess, threads, threads, 1);
 	pos = 0;
 	for (int a = 0;a < th;a++) {
-		sGenIndex* s = new sGenIndex(fii, pos, pos + set, NULL,&mask[a]);
+		sGenIndex* s = new sGenIndex(&fii, pos, pos + set, NULL,&mask[a]);
 		if (a > 0) s->arr = &binSz[(a - 1) * z * maxBin];
-		if (a == th - 1) s->stop = (unsigned int)fii->pepArrSz;
+		if (a == th - 1) s->stop = (unsigned int)fii.pepArrSz;
 		pool2->Launch(s);
 		pos += set;
 	}
@@ -187,11 +186,11 @@ void FIManager::LocalGenerateIndex() {
 	//Copy over index bin sizes (from last array)
 	for (int a = 0;a < 3;a++) {
 		for (size_t b = 0;b < maxBin;b++) {
-			fii->binSz[a][b] = binSz[lastBin * z * maxBin + a * maxBin + b];
+			fii.binSz[a][b] = binSz[lastBin * z * maxBin + a * maxBin + b];
 		}
 	}
 
-	//free memory
+	//Free memory
 	delete[] binSz;
 	delete[] mask;
 }
@@ -208,7 +207,7 @@ bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 	for (size_t b = 0;b < scans.size();b++) {
 		if (b % 10000 == 0) cout << ".";
 		searchPool->WaitForQueuedParams();
-		sSearchStruct* s = new sSearchStruct(fii,&scans[b]);
+		sSearchStruct* s = new sSearchStruct(&fii,&scans[b]);
 		searchPool->Launch(s);
 	}
 	searchPool->WaitForQueuedParams();
@@ -230,7 +229,7 @@ bool FIManager::ScoreSpectrum(DataLoader& scans) {
 	for (size_t b = 0;b < scans.Size();b++) {
 		if (b % 10000 == 0) cout << ".";
 		searchPool->WaitForQueuedParams();
-		sSearchStruct* s = new sSearchStruct(fii, &scans[b]);
+		sSearchStruct* s = new sSearchStruct(&fii, &scans[b]);
 		searchPool->Launch(s);
 	}
 	searchPool->WaitForQueuedParams();

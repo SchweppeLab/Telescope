@@ -76,12 +76,12 @@ public:
 	bool ScoreSpectrum(std::vector<FISpectrum>& scans);
 	bool ScoreSpectrum(DataLoader& scans);
 
-	FragmentIonIndex* fii = nullptr;  //generate an array, one per thread
+	FragmentIonIndex fii;
 
 protected:
 private:
 
-	void LocalGenerateIndex();
+	void InternalGenerateIndex();
 
 	//Processes run during multithreading
 	static void CalcIndexProcess(sGenIndex* s);

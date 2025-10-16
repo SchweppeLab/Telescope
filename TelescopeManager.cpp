@@ -57,7 +57,7 @@ int TelescopeManager::Launch(bool echo) {
 bool TelescopeManager::ExportResults(const string& fn, bool echo) {
 	if (echo) cout << "Exporting results to " + fn + " ...";
 	ResultsExporter re;
-	re.Initialize(&dbm, fim.fii, &params);
+	re.Initialize(&dbm, &fim.fii, &params);
 
 	start_time = chrono::high_resolution_clock::now();
 	bool ret = re.Write(fn, scans);
@@ -79,7 +79,7 @@ bool TelescopeManager::ExportResults(const string& fn, bool echo) {
 /// </summary>
 void TelescopeManager::Init() {
 	fim.Initialize(&dbm, &params);
-	scans.Initialize(&dbm, fim.fii, &params);
+	scans.Initialize(&dbm, &fim.fii, &params);
 }
 
 /// <summary>

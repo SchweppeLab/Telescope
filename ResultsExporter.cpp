@@ -2,20 +2,33 @@
 
 using namespace std;
 
+/// <summary>
+/// Default constructor.
+/// </summary>
 ResultsExporter::ResultsExporter() {
 }
 
+/// <summary>
+/// Default destructor.
+/// </summary>
 ResultsExporter::~ResultsExporter() {
   dbm = nullptr;
   fii = nullptr;
   params = nullptr;
 }
 
+/// <summary>
+/// Creates a <modification_info> element and all sub-elements from a DBManager peptide.
+/// </summary>
+/// <param name="peptide">The peptide sequence</param>
+/// <param name="modIndex">The index of the modification</param>
+/// <param name="maskIndex">The index of the modification mask</param>
+/// <returns></returns>
 CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& peptide, const int& modIndex, const int& maskIndex) {
-  //modifications
-  //if there are modifications, set up an array that has the additional masses at each position
+
+  //If there are modifications, set up an array that has the additional masses at each position
   char* mods = new char[peptide.size() + 2];
-  for (size_t b = 0;b < peptide.size();b++) mods[b] = -1;
+  for (size_t b = 0;b < peptide.size()+2;b++) mods[b] = -1;
   if (modIndex > -1) {
     string mask = dbm->ModMask(maskIndex);
     for (size_t c = 0;c < mask.size();c += 2) {
@@ -29,6 +42,8 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
   double stMass;
   CnpxModificationInfo mi;
   bool hasMod = false;
+
+  //Iterate over all amino acids, generating an extended peptide string that includes the variable modification masses
   for (size_t b = 0;b < peptide.size();b++) {
     modPep += peptide[b];
     
@@ -53,12 +68,19 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
       mi.mod_aminoacid_mass.push_back(maam);
     }
   }
+
+  //Add modified_peptide element if it exists and free memory
   if (hasMod) mi.modified_peptide = modPep;
   delete[] mods;
 
   return mi;
 }
 
+/// <summary>
+/// Creates search_hit element from a PSM.
+/// </summary>
+/// <param name="ss">ScoreStruct sturcture representing the PSM</param>
+/// <returns>search_hit element and all contained sub-elements</returns>
 CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
   unsigned int pepIndex = fii->peptides[ss.index].peptideIndex; 
   int modIndex = fii->peptides[ss.index].modIndex;
@@ -101,6 +123,11 @@ CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
   return sh;
 }
 
+/// <summary>
+/// Creates a spectrum_query element from a FISpectrum object
+/// </summary>
+/// <param name="spec">FISpectrum object</param>
+/// <returns>spectrum_query element</returns>
 CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum& spec) {
   CnpxSpectrumQuery sq;
   sq.spectrum = to_string(spec.scanNumber);
@@ -114,38 +141,55 @@ CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum& spec) {
   return sq;
 }
 
+/// <summary>
+/// Associates DBManager, FragmentIonIndex, and ParamsManager objects. Must be called prior
+/// to exporting search results.
+/// </summary>
+/// <param name="d">pointer to DBManager object</param>
+/// <param name="f">pointer to FragmentIonIndex object</param>
+/// <param name="p">pointer to ParamsMananger object</param>
 void ResultsExporter::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p) {
   dbm = d;
   fii = f;
   params = p;
 }
 
+/// <summary>
+/// Writes all scan results to a file
+/// </summary>
+/// <param name="fn">The name (and path if not in current working directoy) of the file</param>
+/// <param name="scans">The set of spectra with their PSMs</param>
+/// <returns>true upon success</returns>
 bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
 
+  //Create PepXML data object
 	NeoPepXMLParser p;
 
+  //Create top PepXML element
   CnpxMSMSPipelineAnalysis pa;
   char timebuf[80];
   time_t timeNow;
   time(&timeNow);
   strftime(timebuf, 80, "%Y-%m-%dT%H:%M:%S", localtime(&timeNow));
   pa.date.parseDateTime(timebuf);
+  pa.summary_xml = fn;
 
+  //Create run summary describing the search
   CnpxMSMSRunSummary rs;
-  rs.base_name = "somedata.mzML";
-  rs.base_name = rs.base_name.substr(0, rs.base_name.find_last_of('.'));
+  rs.base_name = fn;
+  rs.base_name = rs.base_name.substr(0, rs.base_name.size()-11);
   string outFile = "results";
   if (rs.base_name[0] == '/') { //unix
     outFile = outFile.substr(outFile.find_last_of("/") + 1, outFile.size());
   } else { //assuming windows
     outFile = outFile.substr(outFile.find_last_of("\\") + 1, outFile.size());
   }
-  rs.raw_data = "somedata";
+  rs.raw_data = ".raw";
   rs.raw_data_type = "raw";
 
-  //Add the enzyme
+  //Add the enzyme: For Telescope, there is currently only one
   CnpxSampleEnzyme se;
-  se.name = "trypsin";
+  se.name = "Trypsin";
   CnpxSpecificity ses;
   ses.cut = "KR";
   ses.no_cut = "P";
@@ -153,6 +197,7 @@ bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
   se.specificity.push_back(ses);
   rs.sample_enzyme.push_back(se);
 
+  //Add the search summary
   CnpxSearchSummary ss;
   ss.search_engine = "Telescope";
   ss.base_name = rs.base_name;
@@ -161,31 +206,27 @@ bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
   ss.fragment_mass_type = "monoisotopic";
   ss.search_id = 1;
 
-
-  //processPath(params->dbFile, outPath);
-  string outPath = "somewhere";
-
+  //Add the FASTA file information
   CnpxSearchDatabase sd;
-  sd.local_path = outPath;
+  sd.local_path = params->fastaFile;
   sd.type = "AA";
   ss.search_database.push_back(sd);
 
+  //Add the FASTA file parsing instructions
   CnpxEnzymaticSearchConstraint esc;
   esc.enzyme = "trypsin";
   esc.max_num_internal_cleavages = params->maxMC;
-  esc.min_number_termini = 2;
+  if (params->semiEnzyme) esc.min_number_termini = 1;
+  else esc.min_number_termini = 2;
   ss.enzymatic_search_constraint.push_back(esc);
 
   //TODO: Add modifications & params
 
 
+  //Add all elements to the pepXML file now.
   rs.search_summary.push_back(ss);
   pa.msms_run_summary.push_back(rs);
-
-  string pepXML_fileName = fn+".pep.xml";
-  pa.summary_xml = pepXML_fileName;
   p.msms_pipeline_analysis.push_back(pa);
-
 
   //Iterate over all spectra
   for (size_t a = 0;a < scans.Size();a++) {

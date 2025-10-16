@@ -7,6 +7,9 @@
 #include "NeoPepXMLParser.h"
 #include "ParamsManager.h"
 
+/// <summary>
+/// Exports Telescope search results in PepXML format.
+/// </summary>
 class ResultsExporter {
 public:
 	ResultsExporter();

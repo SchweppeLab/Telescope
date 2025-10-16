@@ -4,16 +4,21 @@ using namespace std;
 using namespace MSToolkit;
 
 FastXCorr* DataLoader::xcorr;
-
 Mutex DataLoader::mutexThreads;
 bool* DataLoader::activeThread;
 size_t DataLoader::threads;
 
+/// <summary>
+/// Default constructor
+/// </summary>
 DataLoader::DataLoader() {
 	xcorr = nullptr;
 	activeThread = nullptr;
 }
 
+/// <summary>
+/// Default destructor
+/// </summary>
 DataLoader::~DataLoader() {
 	dbm = nullptr;
 	fii = nullptr;
@@ -21,10 +26,18 @@ DataLoader::~DataLoader() {
 	Deallocate();
 }
 
+/// <summary>
+/// Accesses any scan stored in the DataLoader
+/// </summary>
+/// <param name="index">position of the scan in the scans array</param>
+/// <returns>FISpectrum scan object</returns>
 FISpectrum& DataLoader::operator[](const size_t& index) {
 	return scans[index];
 }
 
+/// <summary>
+/// Allocates memory used by the FastXCorr objects for spectral processing.
+/// </summary>
 void DataLoader::Allocate() {
 	Deallocate();
 	threads = (size_t)params->threads;
@@ -34,6 +47,9 @@ void DataLoader::Allocate() {
 	Threading::CreateMutex(&mutexThreads);
 }
 
+/// <summary>
+/// Frees memory used by the DataLoader
+/// </summary>
 void DataLoader::Deallocate() {
 	if (xcorr) delete[] xcorr;
 	if (activeThread) {
@@ -42,6 +58,13 @@ void DataLoader::Deallocate() {
 	}
 }
 
+/// <summary>
+/// Sets the support classes required for processing spectra
+/// </summary>
+/// <param name="d">pointer to DBManager object</param>
+/// <param name="f">pointer to FragmentIonIndex object</param>
+/// <param name="p">pointer to ParamsManager object</param>
+/// <returns></returns>
 bool DataLoader::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p) {
 	params = p;
 	dbm = d;
@@ -50,10 +73,19 @@ bool DataLoader::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p)
 	return true;
 }
 
+/// <summary>
+/// Starts the spectral processing for xcorr transformation inside a thread.
+/// </summary>
+/// <param name="s"></param>
+/// <param name="tIndex"></param>
 void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
 	xcorr[tIndex].ProcessSpectrum(s);
 }
 
+/// <summary>
+/// Manages the next avialble thread to perfrom spectral processing
+/// </summary>
+/// <param name="s">sSpectrumStruct defining the scan to be processed</param>
 void DataLoader::ProcessSpectrumProc(sSpectrumStruct* s) {
 	//Get next available thread number;
 	int i;
@@ -73,8 +105,12 @@ void DataLoader::ProcessSpectrumProc(sSpectrumStruct* s) {
 	s = nullptr;
 }
 
-//This could be far more efficient by reading into temporary memory, transforming, then appending
-//an array of processed scans. With lots and lots of memory, perhaps even precompute each scan size?
+/// <summary>
+/// Reads in a spectral data file, storing spectra in FISpectrum objects. File reading is a single thread process.
+/// Once all files are loaded, the array of object can optionally be processed using multiple threads.
+/// </summary>
+/// <param name="fn">The name (and path if not in the current working directory) of the spectral file to read.</param>
+/// <returns>true upon success</returns>
 bool DataLoader::ReadSpectra(const string& fn) {
 	MSReader r;
 	Spectrum s;
@@ -93,6 +129,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 		if (s.getMsLevel() == 2) {
 
 			//skip emptyish scans
+			//TODO: Make this a user-defined parameter!
 			if (s.size() < 25) goto NEXTSCAN;
 
 			//Add the precursor information
@@ -115,7 +152,6 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			scans.emplace_back();
 			scans[scanIndex].scanNumber = s.getScanNumber();
 
-
 			FIPrecursor p;
 			p.charge = charge;
 			p.mass = mass;
@@ -137,25 +173,16 @@ bool DataLoader::ReadSpectra(const string& fn) {
 				p.value = s[a].intensity;
 				scans[scanIndex].AddPeak(p);
 			}
-
-			if (params->xcorr) {
-				//xcorr[0].ProcessSpectrum(scans[scanIndex]);
-				//cout << "Send " << scans[scanIndex].scanNumber << endl;
-				//spectraPool->WaitForQueuedParams();
-				//sSpectrumStruct* sp = new sSpectrumStruct(&scans[scanIndex]);
-				//spectraPool->Launch(sp);
-			}
-
 		}
 
 		NEXTSCAN:
 		r.readFile(NULL, s);
 	}
 
+	//Only process spectra if the params instruct to do so. It is done with multiple threads for speed.
 	if (params->xcorr) {
 		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, (int)threads, (int)threads, 1);
 		for (size_t a = 0;a < scans.size();a++) {
-			//cout << a << "\t" << scans[a].scanNumber << "\t" << scans[a].Size() << endl;
 			spectraPool->WaitForQueuedParams();
 			sSpectrumStruct* sp = new sSpectrumStruct(&scans[a]);
 			spectraPool->Launch(sp);
@@ -168,6 +195,10 @@ bool DataLoader::ReadSpectra(const string& fn) {
 	return true;
 }
 
+/// <summary>
+/// Returns the number of spectra.
+/// </summary>
+/// <returns>the number of spectra</returns>
 size_t DataLoader::Size() {
 	return scans.size();
 }
