@@ -71,7 +71,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
 				//if(mass>800) cout << mz << "\t" << z << "\t" << (size_t)(mz * invBinSize) << endl;
-				if (mz > params->minMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < params->maxMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -81,7 +81,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > params->minMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < params->maxMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -266,14 +266,14 @@ void FragmentIonIndex::Indexer(bool preCompute) {
 
 			for (int z = 0;z < 3;z++) {
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
-				if (mz > params->minMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < params->maxMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (preCompute) binSz[z][bin]++;
 					else bins[z][bin][binSz[z][bin]++] = a;
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > params->minMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < params->maxMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (preCompute) binSz[z][bin]++;
 					else bins[z][bin][binSz[z][bin]++] = a;
@@ -351,7 +351,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 				if (hasMods) modMass += mods[b];
 
 				mz = (mass + modMass + (z + 1) * PROTON) / (z + 1);
-				if (mz > params->minMZ && mz < MAXMZ) {
+				if (mz > params->minMZ && mz < params->maxMZ) {
 					bin = (size_t)(mz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -363,7 +363,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 				}
 
 				revMz = (revMass - modMass + (z + 1) * PROTON) / (z + 1);
-				if (revMz > params->minMZ && revMz < MAXMZ) {
+				if (revMz > params->minMZ && revMz < params->maxMZ) {
 					bin = (size_t)(revMz * invBinSize+1);
 					if (!fim[bin]) {
 						fim[bin] = true;
@@ -385,7 +385,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 }
 
 void FragmentIonIndex::Resize() {
-	maxBin = (size_t)(invBinSize * MAXMZ + 1 + 0.5);
+	maxBin = (size_t)(invBinSize * params->maxMZ + 1 + 0.5);
 	DeleteIndex();
 }
 

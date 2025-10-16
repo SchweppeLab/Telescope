@@ -6,6 +6,7 @@
 #include "FIManager.h"
 #include "GlobalDefinitions.h"
 #include "ParamsManager.h"
+#include "ResultsExporter.h"
 
 #include <chrono>
 
@@ -20,6 +21,7 @@ public:
 protected:
 private:
 
+	bool ExportResults(const std::string& fn,bool echo);
 	void Init();
 
 	bool ProcessDB(bool echo);

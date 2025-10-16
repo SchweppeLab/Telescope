@@ -2,6 +2,15 @@
 
 using namespace std;
 
+ResultsExporter::ResultsExporter() {
+}
+
+ResultsExporter::~ResultsExporter() {
+  dbm = nullptr;
+  fii = nullptr;
+  params = nullptr;
+}
+
 CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& peptide, const int& modIndex, const int& maskIndex) {
   //modifications
   //if there are modifications, set up an array that has the additional masses at each position
@@ -16,11 +25,22 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
   }
 
   string modPep;
+  string stID;
+  double stMass;
   CnpxModificationInfo mi;
   bool hasMod = false;
   for (size_t b = 0;b < peptide.size();b++) {
     modPep += peptide[b];
-    //TODO:list static mods
+    
+    //Static mods
+    if (dbm->CheckStaticMod(peptide[b], stMass, stID)) {
+      hasMod = true;
+      CnpxModAminoAcidMass maam;
+      maam.position = (int)b + 1;
+      maam.staticMass = stMass;
+      maam.mass = dbm->aa[peptide[b]];
+      mi.mod_aminoacid_mass.push_back(maam);
+    }
 
     //Var mods
     if (mods[b] > -1) {
@@ -94,6 +114,12 @@ CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum& spec) {
   return sq;
 }
 
+void ResultsExporter::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p) {
+  dbm = d;
+  fii = f;
+  params = p;
+}
+
 bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
 
 	NeoPepXMLParser p;
@@ -146,7 +172,7 @@ bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
 
   CnpxEnzymaticSearchConstraint esc;
   esc.enzyme = "trypsin";
-  esc.max_num_internal_cleavages = MAXMC;
+  esc.max_num_internal_cleavages = params->maxMC;
   esc.min_number_termini = 2;
   ss.enzymatic_search_constraint.push_back(esc);
 

@@ -56,7 +56,7 @@ void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
 
 void DataLoader::ProcessSpectrumProc(sSpectrumStruct* s) {
 	//Get next available thread number;
-	size_t i;
+	int i;
 	Threading::LockMutex(mutexThreads);
 	for (i = 0;i < threads;i++) {
 		if (!activeThread[i]) {
@@ -103,9 +103,9 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			//what to do if charge=0?
 			if (charge == 0) charge = 3;
 			double mass = mz * charge - (charge * PROTON);
-			if (mass<MINPEPMASS || mass>MAXPEPMASS) goto NEXTSCAN;
+			if (mass<params->minPepMass || mass>params->maxPepMass) goto NEXTSCAN;
 
-			double err = mass / 1e6 * PPM;
+			double err = mass / 1e6 * params->ppm;
 			double min = mass - err;
 			double max = mass + err;
 			size_t index = fii->FindPeptideIndex(min); //should return the first index below the desired mass
@@ -122,7 +122,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			p.peptide = "";
 			p.pepOffset = index;
 			scans[scanIndex].precursor.push_back(p);
-			scans[scanIndex].precursor.back().ts.Init(PSMCOUNT);
+			scans[scanIndex].precursor.back().ts.Init(params->psmCount);
 			int count = 0;
 			while (fii->peptides[index++].mass < max) count++;
 			scans[scanIndex].precursor.back().scoreCount = count;
@@ -130,15 +130,15 @@ bool DataLoader::ReadSpectra(const string& fn) {
 
 			//Add the peaks
 			for (int a = 0;a < s.size();a++) {
-				if (s[a].mz > MAXMZ) break; //assuming mz values are in order from low to high.
+				if (s[a].mz > params->maxMZ) break; //assuming mz values are in order from low to high.
 				FIPeak p;
 				p.mz = s[a].mz;
-				p.fIndex = s[a].mz * invBinSize + 1;
+				p.fIndex = (size_t)(s[a].mz * invBinSize + 1);
 				p.value = s[a].intensity;
 				scans[scanIndex].AddPeak(p);
 			}
 
-			if (XCORR) {
+			if (params->xcorr) {
 				//xcorr[0].ProcessSpectrum(scans[scanIndex]);
 				//cout << "Send " << scans[scanIndex].scanNumber << endl;
 				//spectraPool->WaitForQueuedParams();
@@ -152,7 +152,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 		r.readFile(NULL, s);
 	}
 
-	if (XCORR) {
+	if (params->xcorr) {
 		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, threads, threads, 1);
 		for (size_t a = 0;a < scans.size();a++) {
 			//cout << a << "\t" << scans[a].scanNumber << "\t" << scans[a].Size() << endl;

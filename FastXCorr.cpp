@@ -36,7 +36,7 @@ void FastXCorr::Deallocate() {
 bool FastXCorr::Initialize(ParamsManager* p) {
 	params = p;
 	double invBinSize = 1 / params->binSize;
-	maxBin = (size_t)(invBinSize * MAXMZ + 1 + 0.5);
+	maxBin = (size_t)(invBinSize * params->maxMZ + 1 + 0.5);
 	Allocate();
 	return true;
 }
@@ -89,7 +89,7 @@ void FastXCorr::XCorr(vector<FIPeak>& spec, double& max) {
 
 	//MH: Fill sparse matrix
 	for (i = 0;i < maxBin;i++) {
-		if (pfFastXcorrData[i] > MINPEAK || pfFastXcorrData[i] < -MINPEAK) {
+		if (pfFastXcorrData[i] > params->minPeak || pfFastXcorrData[i] < -params->minPeak) {
 			//printf("%d\t%.6f\n", i, pfFastXcorrData[i]);
 			FIPeak pk;
 			pk.fIndex = i;

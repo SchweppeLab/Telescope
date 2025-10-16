@@ -29,13 +29,19 @@ typedef struct DBMModDef {
 	int maxPerPeptide = 0;
 } DBMModDef;
 
+typedef struct DBMStatMad {
+	double mass = 0;
+	std::string description;
+} DBMStatMod;
 
 
 class DBManager {
 public:
 	DBManager();
 
+	void AddStaticMod(std::string sites, double mass, std::string description = "");
 	void AddVariableMod(std::string sites, double mass, int maxPerPeptide, std::string description = "");
+	bool CheckStaticMod(char aa, double& mass, std::string& description);
 	size_t DigestPeptides(std::string site, std::string except, bool cterm, bool semi);
 	std::string GetModDescription(const char& index);
 	double GetModMass(const char& index);
@@ -85,7 +91,7 @@ private:
 	std::vector<std::string> modMask;
 	std::vector<double> modMass;
 
-
+	DBMStatMad staticMods[128];
 	std::vector<DBMModDef> varMods;
 	int* varModCount;
 	std::vector<size_t> aaMods[128];  //each amino acid site has its own set of indexes to possible mods.

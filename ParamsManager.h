@@ -7,10 +7,19 @@
 #include <string>
 #include <vector>
 
+//Structure defining database modifications as parameters.
+typedef struct PMMod {
+	bool variable = false;
+	int maxPerPeptide = 0;
+	double mass = 0;
+	std::string sites;
+	std::string description;
+} PMMod;
+
 class ParamsManager {
 public:
 
-	bool CheckParams(); //Returns true when params are complete and well formed.
+	bool CheckParams();                      //Returns true when params are complete and well formed.
 	bool ReadParams(const std::string& fn);  //Processes parameters from a data file.
 
 
@@ -19,11 +28,11 @@ public:
 	std::string fastaFile;								//The FASTA database
 
 	//Spectral Processing Parameters
-	double binSize = 0.02;  //peak matching bin size
-	double minMZ = 200.0;   //lowest spectral mass to search
-	double maxMZ = 2000.0;  //highed spectral mass to search
-	double minPeak = 2; //1e-6    //magnitude (absolute) threshold following Xcorr transformation
-	bool xcorr = true;      //perform Xcorr transformation
+	double binSize = 0.02;       //peak matching bin size
+	double minMZ = 200.0;        //lowest spectral mass to search
+	double maxMZ = 2000.0;       //highed spectral mass to search
+	double minPeak = 2; //1e-6   //magnitude (absolute) threshold following Xcorr transformation
+	bool xcorr = true;           //perform Xcorr transformation
 
 	//Database Parsing Parameters
 	int maxMC = 2;  //maximum number of enzyme missed cleavages allowed
@@ -33,6 +42,7 @@ public:
 	double maxPepMass = 5000.0; //maximum peptide mass  allowed
 	int maxMods = 2;						//maximum modifications allowed per peptide
 	bool semiEnzyme = false;    //semi-enzyme specificity
+	std::vector<PMMod> mods;
 
 	//Search Parameters
 	double ppm = 20.0;    //+/- PPM mass tolerance (symmetrical) for spectrum precursor

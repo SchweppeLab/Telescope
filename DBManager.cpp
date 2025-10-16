@@ -4,7 +4,6 @@ using namespace std;
 using namespace db_ns;
 
 DBManager::DBManager() {
-	Init();
 }
 
 void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t start, size_t end, bool hasMod) {
@@ -24,7 +23,7 @@ void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t star
 			//if (mass > 800 && mass < 3000 && precursors.size() < SPECTRUMCOUNT) addPrecursor(pep, mass + 18.01056466, (int)mass / 700);
 		} else index = it->second;
 		peptides[index].instances.emplace_back();
-		peptides[index].instances.back().dbIndex = dbIndex;
+		peptides[index].instances.back().dbIndex = (unsigned int)dbIndex;
 		peptides[index].instances.back().start = (unsigned short)start;
 		peptides[index].instances.back().len = len;
 
@@ -103,7 +102,14 @@ void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double 
 //cout << "End from " << startAA << endl;
 }
 
-void DBManager::AddVariableMod(std::string sites, double mass, int maxPerPeptide, std::string description) {
+void DBManager::AddStaticMod(string sites, double mass, string description) {
+	for (size_t a = 0;a < sites.size();a++) {
+		staticMods[sites[a]].mass = mass;
+		staticMods[sites[a]].description = description;
+	}
+}
+
+void DBManager::AddVariableMod(string sites, double mass, int maxPerPeptide, string description) {
 	//TODO: check sites string for validity.
 	DBMModDef md;
 	md.sites = sites;
@@ -122,7 +128,15 @@ void DBManager::BuildModSet() {
 	}
 }
 
+bool DBManager::CheckStaticMod(char aa, double& mass, string& description) {
+	mass = staticMods[aa].mass;
+	description = staticMods[aa].description;
+	return mass != 0;
+}
+
 size_t DBManager::DigestPeptides(std::string site, std::string except, bool cterm, bool semi) {
+	Init();
+
 	//Build variable mod structures
 	BuildModSet();
 	varModCount = new int[varMods.size()]();
@@ -304,68 +318,31 @@ string& DBManager::GetProteinSeq(const size_t& index) {
 }
 
 void DBManager::Init() {
-	//Cometize the masses
-	double H, O, C, N, S, Se;
-	H = 1.007825035; // hydrogen
-	O = 15.99491463;  // oxygen
-	C = 12.00000000;   // carbon
-	N = 14.0030740;   // nitrogen
-	S = 31.9720707;   // sulphur
-	Se = 79.9165196;  // selenium
+	//reset amino acid masses
+	memset(aa, 0, sizeof(double) * 128);
 
-	aa['A'] = C * 3 + H * 5 + N + O;
-	aa['C'] = C * 3 + H * 5 + N + O + S + 57.0214611;
-	aa['D'] = C * 4 + H * 5 + N + O * 3;
-	aa['E'] = C * 5 + H * 7 + N + O * 3;
-	aa['F'] = C * 9 + H * 9 + N + O;
-	aa['G'] = C * 2 + H * 3 + N + O;
-	aa['H'] = C * 6 + H * 7 + N * 3 + O;
-	aa['I'] = C * 6 + H * 11 + N + O;
-	aa['K'] = C * 6 + H * 12 + N * 2 + O;
-	aa['L'] = C * 6 + H * 11 + N + O;
-	aa['M'] = C * 5 + H * 9 + N + O + S;
-	aa['N'] = C * 4 + H * 6 + N * 2 + O * 2;
-	aa['P'] = C * 5 + H * 7 + N + O;
-	aa['Q'] = C * 5 + H * 8 + N * 2 + O * 2;
-	aa['R'] = C * 6 + H * 12 + N * 4 + O;
-	aa['S'] = C * 3 + H * 5 + N + O * 2;
-	aa['T'] = C * 4 + H * 7 + N + O * 2;
-	aa['U'] = C * 3 + H * 5 + N + O + Se;
-	aa['V'] = C * 5 + H * 9 + N + O;
-	aa['W'] = C * 11 + H * 10 + N * 2 + O;
-	aa['Y'] = C * 9 + H * 9 + N + O * 2;
-
-
-	////Amino acid masses for the less precise
-	//aa['A'] = 71.0371103;
-	//aa['C'] = 103.0091803+ 57.0214611;
-	//aa['D'] = 115.0269385;
-	//aa['E'] = 129.0425877;
-	//aa['F'] = 147.0684087;
-	//aa['G'] = 57.0214611;
-	//aa['H'] = 137.0589059;
-	//aa['I'] = 113.0840579;
-	//aa['K'] = 128.0949557;
-	//aa['L'] = 113.0840579;
-	//aa['M'] = 131.0404787;
-	//aa['N'] = 114.0429222;
-	//aa['P'] = 97.0527595;
-	//aa['Q'] = 128.0585714;
-	//aa['R'] = 156.1011021;
-	//aa['S'] = 87.0320244;
-	//aa['T'] = 101.0476736;
-	//aa['U'] = 150.9536303;
-	//aa['V'] = 99.0684087;
-	//aa['W'] = 186.0793065;
-	//aa['Y'] = 163.0633228;
-
-	//modMask.push_back("0");
-	//modMass.push_back(15.9949);
-	//aaMods['M'].push_back(0);
-	//modMass.push_back(79.995);
-	//aaMods['T'].push_back(1);
-	//aaMods['S'].push_back(1);
-	//aaMods['Y'].push_back(1);
+	//Add the atom masses
+	aa['A'] = CARBON * 3 + HYDROGEN * 5 + NITROGEN + OXYGEN + staticMods['A'].mass;
+	aa['C'] = CARBON * 3 + HYDROGEN * 5 + NITROGEN + OXYGEN + SULFUR + staticMods['C'].mass;
+	aa['D'] = CARBON * 4 + HYDROGEN * 5 + NITROGEN + OXYGEN * 3 + staticMods['D'].mass;
+	aa['E'] = CARBON * 5 + HYDROGEN * 7 + NITROGEN + OXYGEN * 3 + staticMods['E'].mass;
+	aa['F'] = CARBON * 9 + HYDROGEN * 9 + NITROGEN + OXYGEN + staticMods['F'].mass;
+	aa['G'] = CARBON * 2 + HYDROGEN * 3 + NITROGEN + OXYGEN + staticMods['G'].mass;
+	aa['H'] = CARBON * 6 + HYDROGEN * 7 + NITROGEN * 3 + OXYGEN + staticMods['H'].mass;
+	aa['I'] = CARBON * 6 + HYDROGEN * 11 + NITROGEN + OXYGEN + staticMods['I'].mass;
+	aa['K'] = CARBON * 6 + HYDROGEN * 12 + NITROGEN * 2 + OXYGEN + staticMods['K'].mass;
+	aa['L'] = CARBON * 6 + HYDROGEN * 11 + NITROGEN + OXYGEN + staticMods['L'].mass;
+	aa['M'] = CARBON * 5 + HYDROGEN * 9 + NITROGEN + OXYGEN + SULFUR + staticMods['M'].mass;
+	aa['N'] = CARBON * 4 + HYDROGEN * 6 + NITROGEN * 2 + OXYGEN * 2 + staticMods['N'].mass;
+	aa['P'] = CARBON * 5 + HYDROGEN * 7 + NITROGEN + OXYGEN + staticMods['P'].mass;
+	aa['Q'] = CARBON * 5 + HYDROGEN * 8 + NITROGEN * 2 + OXYGEN * 2 + staticMods['Q'].mass;
+	aa['R'] = CARBON * 6 + HYDROGEN * 12 + NITROGEN * 4 + OXYGEN + staticMods['R'].mass;
+	aa['S'] = CARBON * 3 + HYDROGEN * 5 + NITROGEN + OXYGEN * 2 + staticMods['S'].mass;
+	aa['T'] = CARBON * 4 + HYDROGEN * 7 + NITROGEN + OXYGEN * 2 + staticMods['T'].mass;
+	aa['U'] = CARBON * 3 + HYDROGEN * 5 + NITROGEN + OXYGEN + SELENIUM + staticMods['U'].mass;
+	aa['V'] = CARBON * 5 + HYDROGEN * 9 + NITROGEN + OXYGEN + staticMods['V'].mass;
+	aa['W'] = CARBON * 11 + HYDROGEN * 10 + NITROGEN * 2 + OXYGEN + staticMods['W'].mass;
+	aa['Y'] = CARBON * 9 + HYDROGEN * 9 + NITROGEN + OXYGEN * 2 + staticMods['Y'].mass;
 }
 
 std::string& DBManager::ModMask(const int& index) {

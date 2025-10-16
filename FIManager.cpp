@@ -82,7 +82,7 @@ void FIManager::LocalGenerateIndex() {
 	size_t maxBin = fii->maxBin;
 	unsigned int* binSz = new unsigned int[th * z * maxBin]();
 	FIMask* mask = new FIMask[threads];
-	for (size_t a = 0;a < threads;a++) mask[a].Allocate(MAXPEPLEN * 2 * 3, fii->maxBin);
+	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * 3, fii->maxBin);
 
 	//Determine the index sizes at each bin within each thread
 	ThreadPool<sGenIndex*>* pool = new ThreadPool<sGenIndex*>(CalcIndexSzProcess, threads, threads, 1);

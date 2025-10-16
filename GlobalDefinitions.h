@@ -1,23 +1,20 @@
 #ifndef _GLOBALDEFINITIONS_H
 #define _GLOBALDEFINITIONS_H
 
-#define MAXMC 2
-#define MINPEPMASS 600
-#define MAXPEPMASS 5000
-#define MINPEPLEN 5
-#define MAXPEPLEN 50
-#define MAXMZ 2000              //Convenient ceiling to fragment ion size. Also means not necessary to keep spectrum peaks past this point.
+//obsolete - using real data instead of fake data
 #define SPECTRUMCOUNT 500000
 #define NOISE 00
-#define PPM 20
-#define MINPEAK 2 //1e-6
-#define XCORR 1
-#define MAXMODS 2
-#define SEMIENZYME false
-#define PSMCOUNT 5
 
+//for e-value
 #define HISTOSZ 152
 
-#define PROTON 1.00727646688  //matches comet
+//matches comet
+#define PROTON 1.00727646688  
+#define HYDROGEN 1.007825035
+#define OXYGEN 15.99491463  
+#define CARBON 12.00000000  
+#define NITROGEN 14.0030740 
+#define SULFUR 31.9720707   
+#define SELENIUM 79.9165196 
 
 #endif

@@ -5,20 +5,25 @@
 #include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
 #include "NeoPepXMLParser.h"
+#include "ParamsManager.h"
 
 class ResultsExporter {
 public:
+	ResultsExporter();
+	~ResultsExporter();
 
+	void Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p);
 	bool Write(const std::string& fn, DataLoader& scans);
-
-	DBManager* dbm; //temporary location
-	FragmentIonIndex* fii; //temporary
 
 private:
 
 	CnpxModificationInfo CreateModificationInfo(const std::string& peptide, const int& modIndex, const int& maskIndex);
 	CnpxSearchHit CreateSearchHit(const ScoreStruct& ss);
 	CnpxSpectrumQuery CreateSpectrumQuery(const FISpectrum& spec);
+
+	DBManager* dbm = nullptr;
+	FragmentIonIndex* fii = nullptr;
+	ParamsManager* params = nullptr;
 };
 
 #endif

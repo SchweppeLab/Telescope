@@ -34,30 +34,65 @@ int TelescopeManager::Launch(bool echo) {
 		//---------------------
 		// STEP #6: Export results
 		//---------------------
+		size_t ext = params.dataFile[a].find_last_of('.');
+		string out = params.dataFile[a].substr(0, ext + 1) + "ts.pep.xml";
+		if (!ExportResults(out, echo)) return 7;
 	}
 
 	return 0;
 }
 
+bool TelescopeManager::ExportResults(const string& fn, bool echo) {
+	if (echo) cout << "Exporting results to " + fn + " ...";
+	ResultsExporter re;
+	re.Initialize(&dbm, fim.fii, &params);
+
+	start_time = chrono::high_resolution_clock::now();
+	bool ret = re.Write(fn, scans);
+	end_time = std::chrono::high_resolution_clock::now();
+	duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+	if (echo) {
+		if (ret) cout << "Success" << endl;
+		else cout << "Failed" << endl;
+		cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
+	}
+
+	return ret;
+}
+
+/// <summary>
+/// Initializes the objects required for the search. This is called after
+/// validating the parameters object.
+/// </summary>
 void TelescopeManager::Init() {
 	fim.Initialize(&dbm, &params);
 	scans.Initialize(&dbm, fim.fii, &params);
 }
 
+/// <summary>
+/// Reads in a FASTA file and computes all the peptides that qualify for searching within the 
+/// user-defined parameters.
+/// </summary>
+/// <param name="echo"></param>
+/// <returns>True if successful</returns>
 bool TelescopeManager::ProcessDB(bool echo) {
 	if (echo) cout << "Digesting FASTA file...";
 
-	//Set parameters
+	//Set parameters - TODO: Pass parameters object
 	dbm.minPepMass = params.minPepMass;
 	dbm.maxPepMass = params.maxPepMass;
 	dbm.minPepLen = params.minPepLen;
 	dbm.maxPepLen = params.maxPepLen;
 	dbm.maxMC = params.maxMC;
 	dbm.maxMods = params.maxMods;
-	//for (size_t a = 0;a < params.mods.size();a++) {
-		//dbm.AddVariableMod("STY", 79.966331, 2, "Phosphorylation");
-		dbm.AddVariableMod("M", 15.9949, 2, "Oxidation");
-	//}
+	for (size_t a = 0;a < params.mods.size();a++) {
+		if (params.mods[a].variable) {
+			dbm.AddVariableMod(params.mods[a].sites, params.mods[a].mass, params.mods[a].maxPerPeptide, params.mods[a].description);
+		} else {
+			dbm.AddStaticMod(params.mods[a].sites, params.mods[a].mass, params.mods[a].description);
+		}
+	}
 
 	//Read the fasta file
 	if (!dbm.ReadFASTA(params.fastaFile)) return false;
@@ -124,25 +159,29 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 	//Load all spectra to analyze using a DataLoader. This not only opens the spectra, but also
 	//does any processing (e.g., Xcorr transformation) prior to analysis. Note that when reading the
 	//spectra, the fragment ion index is required to determine the peptide indexes to search.
-	if(echo) cout << "Reading and Processing Spectra...";
+	if (echo) cout << "Reading and Processing " + fn + " ...";
 	start_time = chrono::high_resolution_clock::now();
-	scans.ReadSpectra(fn);  	//Load spectra
+	bool ret = scans.ReadSpectra(fn);  	//Load spectra
 	end_time = std::chrono::high_resolution_clock::now();
 	duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 
 	if (echo) {
-		cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
-		cout << (double)duration_milliseconds.count() / scans.Size() << " ms average per scan." << endl;
+		if (!ret) cout << "Fail" << endl;
+		else {
+			cout << "Success" << endl;
 
-		//Calculate the approximate memory useage. Note that the precursor sizes are not fully calculated
-		long long bytes = 0;
-		for (size_t a = 0;a < scans.Size();a++) {
-			bytes += scans[a].Capacity() * sizeof(FIPeak);
+			cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
+			cout << (double)duration_milliseconds.count() / scans.Size() << " ms average per scan." << endl;
+
+			//Calculate the approximate memory useage. Note that the precursor sizes are not fully calculated
+			long long bytes = 0;
+			for (size_t a = 0;a < scans.Size();a++) {
+				bytes += scans[a].Capacity() * sizeof(FIPeak);
+			}
+			cout << "Scan count: " << scans.Size() << " consuming " << (double)bytes / 1073741824 << " Gb." << endl;
 		}
-		cout << "Done" << endl;
-		cout << "Scan count: " << scans.Size() << " consuming " << (double)bytes / 1073741824 << " Gb." << endl;
 	}
-	return true;
+	return ret;
 }
 
 bool TelescopeManager::SearchSpectra(bool echo) {
