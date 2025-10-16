@@ -153,7 +153,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 	}
 
 	if (params->xcorr) {
-		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, threads, threads, 1);
+		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, (int)threads, (int)threads, 1);
 		for (size_t a = 0;a < scans.size();a++) {
 			//cout << a << "\t" << scans[a].scanNumber << "\t" << scans[a].Size() << endl;
 			spectraPool->WaitForQueuedParams();

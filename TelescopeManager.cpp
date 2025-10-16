@@ -2,6 +2,12 @@
 
 using namespace std;
 
+/// <summary>
+/// The main loop of Telescope, which operates a fragment ion index database search using the parameters
+/// previously set in a call to TelescopeManager::SetParams().
+/// </summary>
+/// <param name="echo"></param>
+/// <returns>0 if successful, or integer error code</returns>
 int TelescopeManager::Launch(bool echo) {
 	//---------------------
 	// STEP #1: Confirm parameters.
@@ -42,6 +48,12 @@ int TelescopeManager::Launch(bool echo) {
 	return 0;
 }
 
+/// <summary>
+/// Creates a results exporter object that writes search results to file in PepXML format.
+/// </summary>
+/// <param name="fn">The name (and path if not in current working directory) of the file to export.</param>
+/// <param name="echo"></param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::ExportResults(const string& fn, bool echo) {
 	if (echo) cout << "Exporting results to " + fn + " ...";
 	ResultsExporter re;
@@ -125,6 +137,12 @@ bool TelescopeManager::ProcessDB(bool echo) {
 	return true;
 }
 
+/// <summary>
+/// This function instructs the fragment ion index manager to build the fragment ion index. This must be performed
+/// AFTER generation of the peptide map.
+/// </summary>
+/// <param name="echo"></param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::ProcessIndex(bool echo) {
 	if(echo) cout << "Generating fragment ion index...";
 
@@ -140,6 +158,14 @@ bool TelescopeManager::ProcessIndex(bool echo) {
 	return true;
 }
 
+/// <summary>
+/// This function instructs the fragment ion index manager to construct a peptide map. The peptide map is an 
+/// array within the fragment ion index that references each peptidoform (peptide and modifications)
+/// and is sorted by mass from lowest to highest. This sorting is critical to efficient fragment ion index
+/// design and traversal.
+/// </summary>
+/// <param name="echo"></param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::ProcessPeptideMap(bool echo) {
 	if(echo) cout << "Generating Peptidoform Map...";
 
@@ -155,7 +181,14 @@ bool TelescopeManager::ProcessPeptideMap(bool echo) {
 	return true;
 }
 
+/// <summary>
+/// This function instructs the DataLoader to read in a spectral data file.
+/// </summary>
+/// <param name="fn">The spectral file name (and path if not in current working directory)</param>
+/// <param name="echo"></param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
+
 	//Load all spectra to analyze using a DataLoader. This not only opens the spectra, but also
 	//does any processing (e.g., Xcorr transformation) prior to analysis. Note that when reading the
 	//spectra, the fragment ion index is required to determine the peptide indexes to search.
@@ -184,12 +217,21 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 	return ret;
 }
 
+/// <summary>
+/// This function instructs the fragment ion index manager to first allocate a small block of memory for storing results,
+/// tailored to the current set of scans, then perform the database search on those scans.
+/// </summary>
+/// <param name="echo"></param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::SearchSpectra(bool echo) {
 	//Allocate memory for search scores. Note that we now use (and reuse) central memory storage for the
 	//peptide scores for a spectrum. Once the spectrum analysis is over, this memory is used for a different scan
 	//and the scores are lost.
 	if(echo) cout << "Allocating score memory, size per thread: " << scans.maxScoreCount << "...";
-	fim.AllocateScoreMemory(scans.maxScoreCount);
+	if (!fim.AllocateScoreMemory(scans.maxScoreCount)) {
+		if(echo) cout << "Fail" << endl;
+		return false;
+	}
 	if(echo) cout << "Done" << endl;
 
 	//The actual search starts here.
@@ -209,6 +251,11 @@ bool TelescopeManager::SearchSpectra(bool echo) {
 	return true;
 }
 
+/// <summary>
+/// Reads and sets parameters for Telescope.
+/// </summary>
+/// <param name="fn">The parameters file to be read</param>
+/// <returns>true if successful</returns>
 bool TelescopeManager::SetParams(const string& fn) {
 	return params.ReadParams(fn);
 }

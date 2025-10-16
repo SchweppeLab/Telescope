@@ -8,16 +8,26 @@ Mutex FIManager::mutexThreads;
 bool* FIManager::activeThread;
 size_t FIManager::threads;
 
+/// <summary>
+/// Default constructor. FIManager::Initialize() must be called prior to use.
+/// </summary>
 FIManager::FIManager() {
 	threads = 1;
 	activeThread = nullptr;
 }
 
+/// <summary>
+/// Destructor.
+/// </summary>
 FIManager::~FIManager() {
-	dbm = NULL;
+	dbm = nullptr;
+	params = nullptr;
 	Deallocate();
 }
 
+/// <summary>
+/// Allocates the memory necessary for fragment ion index manager functionality.
+/// </summary>
 void FIManager::Allocate() {
 	Deallocate();
 	fii = new FragmentIonIndex(dbm,params);
@@ -27,21 +37,37 @@ void FIManager::Allocate() {
 	Threading::CreateMutex(&mutexThreads);
 }
 
+/// <summary>
+/// Allocates the memory required for scoring by calling the underlying fragment ion index memory manager.
+/// </summary>
+/// <param name="sz">The size of the array to allocate</param>
+/// <returns>true upon success</returns>
 bool FIManager::AllocateScoreMemory(const size_t& sz) {
 	mem.AllocateScores(threads, sz);
 	return true;
 }
 
+/// <summary>
+/// Starts the thread process that calls FragmentIonIndex::PopulateIndex()
+/// </summary>
+/// <param name="s"></param>
 void FIManager::CalcIndexProcess(sGenIndex* s) {
 	s->fii->PopulateIndex(s->start, s->stop, s->arr,*s->mask);
 	delete s;
 }
 
+/// <summary>
+/// Starts the thread process that calls FragmentIonIndex::CalculateIndex()
+/// </summary>
+/// <param name="s"></param>
 void FIManager::CalcIndexSzProcess(sGenIndex* s) {
 	s->fii->CalculateIndex(s->start, s->stop, s->arr, *s->mask);
 	delete s;
 }
 
+/// <summary>
+/// Frees memory resources in use.
+/// </summary>
 void FIManager::Deallocate() {
 	if (fii) delete fii;
 	if (activeThread) {
@@ -50,30 +76,44 @@ void FIManager::Deallocate() {
 	}
 }
 
-//Generating the index is a complex process so that it can be multithreaded. Two functions do the work, one
-//for regular peptide searches, the other for crosslinked peptides. These functions are only called if there
-//are mapped peptidoforms for the types of search.
+/// <summary>
+/// Generates the fragment ion index. Will return false if a previous call to FIManager::GeneratePeptideMap() has not
+/// been made.
+/// </summary>
+/// <returns>true if successful</returns>
 bool FIManager::GenerateIndex() {	
 	if (fii->pepArrSz > 0) LocalGenerateIndex();
+	else return false;
 	return true;
 }
 
+/// <summary>
+/// Calls the GeneratePeptideMap function of the underlying fragment ion index class.
+/// </summary>
+/// <returns>true if successful</returns>
 bool FIManager::GeneratePeptideMap() {
-	fii->GeneratePeptideMap();
-	return true;
+	return fii->GeneratePeptideMap();
 }
 
+/// <summary>
+/// Connects the fragment ion index manager to support objects and allocates resources so that it
+/// is ready for use.
+/// </summary>
+/// <param name="d"></param>
+/// <param name="p"></param>
 void FIManager::Initialize(DBManager* d, ParamsManager* p) {
 	dbm = d;
 	params = p;
 	Allocate();
 }
 
-//Generating the fragment ion index from here is multi-threaded. It divides the peptidoforms in the 
-//database manager into equal parts for each thread. Each thread then determines the memory needed for its
-//portion of the index. The total memory is allocated, then each thread populates the index for its peptidoforms
-//using the offsets determined at the memory calculation stage. No two threads will ever access the same
-//block of memory, no semaphores are needed, and the processes are entirely parallel.
+/// <summary>
+/// Generating the fragment ion index from here is multi-threaded. It divides the peptidoforms in the 
+/// database manager into equal parts for each thread. Each thread then determines the memory needed for its
+/// portion of the index. The total memory is allocated, then each thread populates the index for its peptidoforms
+/// using the offsets determined at the memory calculation stage. No two threads will ever access the same
+/// block of memory, no semaphores are needed, and the processes are entirely parallel.
+/// </summary>
 void FIManager::LocalGenerateIndex() {
 
 	//Generate index to temporary memory, then add them all up in order
@@ -126,6 +166,7 @@ void FIManager::LocalGenerateIndex() {
 		}
 	}
 
+	//TODO: Get rid of this or find a better place to export messages to the user
 	cout << "Total fragment ions: " << frags << endl;
 	cout << "Estimated frament index size: " << (double)bytes / 1073741824 << " Gb." << endl;
 
@@ -155,6 +196,12 @@ void FIManager::LocalGenerateIndex() {
 	delete[] mask;
 }
 
+/// <summary>
+/// Performs the fragment ion index database search on a set of scans. Each scan is distributed to the next
+/// available thread.
+/// </summary>
+/// <param name="scans">FISpectrum object</param>
+/// <returns>true if successful</returns>
 bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 
 	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, threads, threads, 1);
@@ -171,6 +218,12 @@ bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 	return true;
 }
 
+/// <summary>
+/// Performs the fragment ion index database search on a set of scans. Each scan is distributed to the next
+/// available thread.
+/// </summary>
+/// <param name="scans">DataLoader object</param>
+/// <returns>true if successful</returns>
 bool FIManager::ScoreSpectrum(DataLoader& scans) {
 
 	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, threads, threads, 1);
@@ -187,6 +240,10 @@ bool FIManager::ScoreSpectrum(DataLoader& scans) {
 	return true;
 }
 
+/// <summary>
+/// Internal function that finds the next available thread and launches a search on the spectrum.
+/// </summary>
+/// <param name="s">sSearchStruct</param>
 void FIManager::ScoreSpectrumProcess(sSearchStruct* s) {
 	//Get next available thread number;
 	size_t i;
