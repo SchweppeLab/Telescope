@@ -5,14 +5,11 @@
 #include "GlobalDefinitions.h"
 #include "ParamsManager.h"
 
-//TODO: This no longer needs its own structure. GET RID OF IT!!
-typedef struct XCorrPreprocessStruct { //adapted from Comet
-	int iHighestIon=0;
-	double dHighestIntensity=0;
-	double* pdCorrelationData = nullptr;
-	double* pdMzData = nullptr;
-} XCorrPreprocessStruct;
-
+/// <summary>
+/// Class that replicates the xcorr scoring transformations in Comet to spectral data.
+/// Note that this processing is somewhat expensive, and can probably be approximated
+/// using much faster methods.
+/// </summary>
 class FastXCorr {
 public:
 	FastXCorr();
@@ -39,7 +36,11 @@ private:
 	double* pdTempRawData = nullptr;
 	double* pdTmpFastXcorrData = nullptr;
 	float* pfFastXcorrData = nullptr;
-  XCorrPreprocessStruct pps;
+
+	int iHighestIon = 0;
+	double dHighestIntensity = 0;
+	double* pdMzData = nullptr;
+	double* pdCorrelationData = nullptr;
 
 };
 

@@ -3,36 +3,54 @@
 
 using namespace std;
 
+/// <summary>
+/// Default constructor
+/// </summary>
 FastXCorr::FastXCorr() {
 }
 
+/// <summary>
+/// Default destructor
+/// </summary>
 FastXCorr::~FastXCorr() {
 	params = nullptr;
 	Deallocate();
 }
 
+/// <summary>
+/// Allocates the memory necessary to process a spectrum
+/// </summary>
 void FastXCorr::Allocate() {
 	Deallocate();
 	pdTempRawData = new double[maxBin + 100]();
 	pdTmpFastXcorrData = new double[maxBin + 100]();
 	pfFastXcorrData = new float[maxBin + 100]();
-	pps.pdCorrelationData = new double[maxBin + 100];
-	pps.pdMzData = new double[maxBin + 100];
+	pdCorrelationData = new double[maxBin + 100];
+	pdMzData = new double[maxBin + 100];
 }
 
+/// <summary>
+/// Frees allocated memory
+/// </summary>
 void FastXCorr::Deallocate() {
 	if(pdTempRawData) delete[] pdTempRawData;
 	if(pdTmpFastXcorrData) delete[] pdTmpFastXcorrData;
 	if(pfFastXcorrData) delete[] pfFastXcorrData;
-	if(pps.pdCorrelationData) delete[] pps.pdCorrelationData;
-	if (pps.pdMzData) delete[] pps.pdMzData;
+	if(pdCorrelationData) delete[] pdCorrelationData;
+	if(pdMzData) delete[] pdMzData;
 	pdTempRawData = nullptr;
 	pdTmpFastXcorrData = nullptr;
 	pfFastXcorrData = nullptr;
-	pps.pdCorrelationData = nullptr;
-	pps.pdMzData = nullptr;
+	pdCorrelationData = nullptr;
+	pdMzData = nullptr;
 }
 
+/// <summary>
+/// Must be called prior to FastXCorr::ProcessSpectrum(). Allocates the right amount of memory based
+/// on the user parameters provided.
+/// </summary>
+/// <param name="p">pointer to ParamsManager object</param>
+/// <returns>true upon success</returns>
 bool FastXCorr::Initialize(ParamsManager* p) {
 	params = p;
 	double invBinSize = 1 / params->binSize;
@@ -41,31 +59,35 @@ bool FastXCorr::Initialize(ParamsManager* p) {
 	return true;
 }
 
+/// <summary>
+/// Processes a spectrum.
+/// </summary>
+/// <param name="spec">FISpectrum object to be processed</param>
+/// <returns>true upon success</returns>
 bool FastXCorr::ProcessSpectrum(FISpectrum& spec) {
 	double m = spec.precursor[0].mass + PROTON + 50; //M+H to match comet
 	XCorr(spec.GetPeaks(),m);
 	return true;
 }
 
+/// <summary>
+/// The primary transformation function. Contains calls to other processing functions
+/// related to normalizing and binning data.
+/// </summary>
+/// <param name="spec">vector of FIPeak spectral data points</param>
+/// <param name="max">the maximum mass used for normalization</param>
 void FastXCorr::XCorr(vector<FIPeak>& spec, double& max) {
 	size_t i;
-	int j;
-	int iTmp;
-	double dTmp;
 	double dSum;
 
-	pps.iHighestIon = 0;
-	pps.dHighestIntensity = 0;
+	iHighestIon = 0;
+	dHighestIntensity = 0;
 	BinIons(spec,max);
 
 	// Create data for correlation analysis.
 	MakeCorrData(50.0);
-	//printf("PPS:\n");
-	//for (size_t a = 0;a < maxBin;a++) printf("%d\t%.6lf\n",(int)a, pps.pdCorrelationData[a]);
-	//printf("End PPS\n");
 
 	// Make fast xcorr spectrum.
-	double* pdCorrelationData = pps.pdCorrelationData;
 	dSum = 0.0;
 	for (i = 0; i < 75; i++) dSum += pdCorrelationData[i];
 	for (i = 75; i < maxBin + 75; i++) {
@@ -90,25 +112,23 @@ void FastXCorr::XCorr(vector<FIPeak>& spec, double& max) {
 	//MH: Fill sparse matrix
 	for (i = 0;i < maxBin;i++) {
 		if (pfFastXcorrData[i] > params->minPeak || pfFastXcorrData[i] < -params->minPeak) {
-			//printf("%d\t%.6f\n", i, pfFastXcorrData[i]);
 			FIPeak pk;
 			pk.fIndex = i;
 			pk.value = pfFastXcorrData[i];
-			if (pps.pdMzData[i] > 0) pk.mz = pps.pdMzData[i]; //restore the original mz values for crosslinked searches
+			if (pdMzData[i] > 0) pk.mz = pdMzData[i]; //restore the original mz values for crosslinked searches
 			spec.push_back(pk);
 		}
 	}
 
 }
 
+/// <summary>
+/// Bins the spectral data by m/z value and finds the base peak of the spectrum
+/// </summary>
+/// <param name="spec">vector of FIPeak spectral data points</param>
+/// <param name="max">the maximum mass used for normalization</param>
 void FastXCorr::BinIons(vector<FIPeak>& spec, double& max) {
-	int i;
-	unsigned int j;
-	double dPrecursor;
-	double dIon;
 	double dIntensity;
-	double* pdCorrelationData = pps.pdCorrelationData;
-	double* pdMzData = pps.pdMzData;
 
 	memset(pdCorrelationData, 0, maxBin * sizeof(double));
 	memset(pdMzData, 0, maxBin * sizeof(double));
@@ -125,16 +145,15 @@ void FastXCorr::BinIons(vector<FIPeak>& spec, double& max) {
 			if (iBinIon < maxBin) {
 
 				dIntensity = sqrt(dIntensity);
-				if (iBinIon > pps.iHighestIon && spec[i].mz<max) {
-					//printf("New high: %.4lf\n",spec[i].mz);
-					pps.iHighestIon = iBinIon;
+				if (iBinIon > iHighestIon && spec[i].mz<max) {
+					iHighestIon = (int)iBinIon;
 				}
 
 				if ((iBinIon < maxBin) && (dIntensity > pdCorrelationData[iBinIon])) {
 					if (dIntensity > pdCorrelationData[iBinIon]) {
 						pdCorrelationData[iBinIon] = dIntensity;
 					}
-					if (pdCorrelationData[iBinIon] > pps.dHighestIntensity) pps.dHighestIntensity = pdCorrelationData[iBinIon];
+					if (pdCorrelationData[iBinIon] > dHighestIntensity) dHighestIntensity = pdCorrelationData[iBinIon];
 				}
 			}
 		}
@@ -145,28 +164,26 @@ void FastXCorr::BinIons(vector<FIPeak>& spec, double& max) {
 
 }
 
-// pdTempRawData now holds raw data, pdCorrelationData is windowed data.
+/// <summary>
+/// Normalizes the spectral peaks
+/// </summary>
+/// <param name="scale">The normalization factor</param>
 void FastXCorr::MakeCorrData(double scale) {
 	int  i;
 	int  ii;
 	int  iBin;
 	int  iNumWindows = 10;
-	int  iWindowSize = (int)((double)(pps.iHighestIon) / iNumWindows)+1;
+	int  iWindowSize = (int)((double)(iHighestIon) / iNumWindows)+1;
 	double dMaxWindowInten[10];
 	double dMaxOverallInten;
 	double dTmp1;
 	double dTmp2;
 
-	double* pdCorrelationData = pps.pdCorrelationData;
 	memset(&dMaxWindowInten, 0, 10 * sizeof(double));
 
-	//printf("HighestIon:%d\n", pps.iHighestIon);
-	//printf("iWindowSize:%d\n", iWindowSize);
-
 	dMaxOverallInten = 0.0;
-	// Normalize maximum intensity to 100.
 	dTmp1 = 1.0;
-	if (pps.dHighestIntensity > 0.000001) dTmp1 = 100.0 / pps.dHighestIntensity;
+	if (dHighestIntensity > 0.000001) dTmp1 = 100.0 / dHighestIntensity;
 
 	int x = 0;
 	int c = 0;
@@ -188,7 +205,6 @@ void FastXCorr::MakeCorrData(double scale) {
 
 	dTmp2 = 0.05 * dMaxOverallInten;
 	for (i = 0; i < iNumWindows; i++) {
-		//printf("%d dMaxWindowInten: %.4lf\n", i,dMaxWindowInten[i]);
 		if (dMaxWindowInten[i] > 0.0) {
 			dTmp1 = scale / dMaxWindowInten[i];
 

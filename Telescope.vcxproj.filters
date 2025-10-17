@@ -39,9 +39,6 @@
     <ClCompile Include="FragmentIonIndex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SpectrumGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TopScore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,9 +87,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FragmentIonIndex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SpectrumGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TopScore.h">

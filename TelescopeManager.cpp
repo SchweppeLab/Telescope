@@ -68,6 +68,7 @@ bool TelescopeManager::ExportResults(const string& fn, bool echo) {
 		if (ret) cout << "Success" << endl;
 		else cout << "Failed" << endl;
 		cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
+		cout << "------------\n" << endl;
 	}
 
 	return ret;
@@ -89,7 +90,7 @@ void TelescopeManager::Init() {
 /// <param name="echo"></param>
 /// <returns>True if successful</returns>
 bool TelescopeManager::ProcessDB(bool echo) {
-	if (echo) cout << "Digesting FASTA file...";
+	if (echo) cout << "------------\nDigesting FASTA file...";
 
 	//Set parameters - TODO: Pass parameters object
 	dbm.minPepMass = params.minPepMass;
@@ -118,20 +119,17 @@ bool TelescopeManager::ProcessDB(bool echo) {
 		cout << "Proteins: " << dbm.SizeProtein() << endl;
 		cout << "Peptides: " << dbm.SizePeptide() << endl;
 
-		size_t realCount = 0;
 		long long bytes = dbm.SizePeptide() * sizeof(DBMPeptide);
 		for (size_t a = 0;a < dbm.SizePeptide();a++) {
-			realCount++;
 			bytes += dbm.Peptide(a).instances.size() * sizeof(DBMPepIndex);
 			bytes += dbm.Peptide(a).mods.size() * sizeof(DBMPepMod);
 			for (size_t b = 0;b < dbm.Peptide(a).mods.size();b++) {
 				bytes += dbm.Peptide(a).mods[b].maskIndex.size() * sizeof(size_t);
-				realCount += dbm.Peptide(a).mods[b].maskIndex.size();
 			}
 		}
 		cout << "Total Peptides memory: " << (double)bytes / 1073741824 << " GB." << endl;
-		cout << "Total Peptides with Modifications: " << realCount << endl;
-		cout << dbm.totalPeptidoforms << " standard Peptidoforms." << endl;
+		cout << "Total Peptides with Modifications: " << dbm.totalPeptidoforms << endl;
+		cout << "------------\n" << endl;
 	}
 
 	return true;
@@ -144,7 +142,7 @@ bool TelescopeManager::ProcessDB(bool echo) {
 /// <param name="echo"></param>
 /// <returns>true if successful</returns>
 bool TelescopeManager::ProcessIndex(bool echo) {
-	if(echo) cout << "Generating fragment ion index...";
+	if(echo) cout << "------------\nGenerating fragment ion index...";
 
 	start_time = chrono::high_resolution_clock::now();
 	fim.GenerateIndex();
@@ -154,6 +152,7 @@ bool TelescopeManager::ProcessIndex(bool echo) {
 	if (echo) {
 		cout << "Done" << endl;
 		cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
+		cout << "------------\n" << endl;
 	}
 	return true;
 }
@@ -167,7 +166,7 @@ bool TelescopeManager::ProcessIndex(bool echo) {
 /// <param name="echo"></param>
 /// <returns>true if successful</returns>
 bool TelescopeManager::ProcessPeptideMap(bool echo) {
-	if(echo) cout << "Generating Peptidoform Map...";
+	if(echo) cout << "------------\nGenerating Peptidoform Map...";
 
 	start_time = chrono::high_resolution_clock::now();
 	fim.GeneratePeptideMap();
@@ -177,6 +176,7 @@ bool TelescopeManager::ProcessPeptideMap(bool echo) {
 	if (echo) {
 		cout << "Done" << endl;
 		cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
+		cout << "------------\n" << endl;
 	}
 	return true;
 }
@@ -192,7 +192,7 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 	//Load all spectra to analyze using a DataLoader. This not only opens the spectra, but also
 	//does any processing (e.g., Xcorr transformation) prior to analysis. Note that when reading the
 	//spectra, the fragment ion index is required to determine the peptide indexes to search.
-	if (echo) cout << "Reading and Processing " + fn + " ...";
+	if (echo) cout << "------------\nReading and Processing " + fn + " ...";
 	start_time = chrono::high_resolution_clock::now();
 	bool ret = scans.ReadSpectra(fn);  	//Load spectra
 	end_time = std::chrono::high_resolution_clock::now();

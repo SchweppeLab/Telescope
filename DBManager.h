@@ -35,9 +35,12 @@ typedef struct DBMStatMad {
 } DBMStatMod;
 
 
+/// <summary>
+/// The class wraps DBaser, a simple FASTA file parser, and manages a list of peptides obtained
+/// for database search analysis.
+/// </summary>
 class DBManager {
 public:
-	DBManager();
 
 	void AddStaticMod(std::string sites, double mass, std::string description = "");
 	void AddVariableMod(std::string sites, double mass, int maxPerPeptide, std::string description = "");
@@ -82,7 +85,6 @@ private:
 	void Init();
 
 	db_ns::DB db;
-
 	
 	std::map<std::string, size_t> mPeptide; //map makes looking up peptide sequences fast.
 	std::map<std::string, size_t> mMod; //map makes looking up peptide sequences fast.
@@ -97,9 +99,6 @@ private:
 	std::vector<size_t> aaMods[128];  //each amino acid site has its own set of indexes to possible mods.
 
 	size_t modCount = 0;
-	//size_t topMods = 0;
-	//size_t curMods = 0;
-
 
 	static bool sortMass(const DBMPeptide& a, const DBMPeptide& b);
 

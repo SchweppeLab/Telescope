@@ -41,7 +41,7 @@ void FIManager::Allocate() {
 /// <param name="sz">The size of the array to allocate</param>
 /// <returns>true upon success</returns>
 bool FIManager::AllocateScoreMemory(const size_t& sz) {
-	mem.AllocateScores(threads, sz);
+	mem.AllocateScores((int)threads, sz);
 	return true;
 }
 
@@ -124,7 +124,7 @@ void FIManager::InternalGenerateIndex() {
 	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * 3, fii.maxBin);
 
 	//Determine the index sizes at each bin within each thread
-	ThreadPool<sGenIndex*>* pool = new ThreadPool<sGenIndex*>(CalcIndexSzProcess, threads, threads, 1);
+	ThreadPool<sGenIndex*>* pool = new ThreadPool<sGenIndex*>(CalcIndexSzProcess, (int)threads, (int)threads, 1);
 	unsigned int set = (unsigned int)(fii.pepArrSz / threads);
 	unsigned int pos = 0;
 	for (int a = 0;a < th;a++) {
@@ -148,7 +148,7 @@ void FIManager::InternalGenerateIndex() {
 	}
 
 	//The last binSz array after roll-up contains the full amount of memory to allocate
-	int lastBin = th - 1;
+	int lastBin = (int)th - 1;
 	size_t frags = 0;
 	size_t bytes = 0;
 	for (int a = 0;a < 3;a++) {
@@ -170,7 +170,7 @@ void FIManager::InternalGenerateIndex() {
 	cout << "Estimated frament index size: " << (double)bytes / 1073741824 << " Gb." << endl;
 
 	//Generate the peptide index in a threaded manner
-	ThreadPool<sGenIndex*>* pool2 = new ThreadPool<sGenIndex*>(CalcIndexProcess, threads, threads, 1);
+	ThreadPool<sGenIndex*>* pool2 = new ThreadPool<sGenIndex*>(CalcIndexProcess, (int)threads, (int)threads, 1);
 	pos = 0;
 	for (int a = 0;a < th;a++) {
 		sGenIndex* s = new sGenIndex(&fii, pos, pos + set, NULL,&mask[a]);
@@ -203,7 +203,7 @@ void FIManager::InternalGenerateIndex() {
 /// <returns>true if successful</returns>
 bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 
-	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, threads, threads, 1);
+	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, (int)threads, (int)threads, 1);
 	for (size_t b = 0;b < scans.size();b++) {
 		if (b % 10000 == 0) cout << ".";
 		searchPool->WaitForQueuedParams();
@@ -225,7 +225,7 @@ bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 /// <returns>true if successful</returns>
 bool FIManager::ScoreSpectrum(DataLoader& scans) {
 
-	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, threads, threads, 1);
+	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, (int)threads, (int)threads, 1);
 	for (size_t b = 0;b < scans.Size();b++) {
 		if (b % 10000 == 0) cout << ".";
 		searchPool->WaitForQueuedParams();

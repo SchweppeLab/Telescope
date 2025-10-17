@@ -7,6 +7,11 @@
 
 #include "TopScore.h"
 
+/// <summary>
+/// In theory, this structure for a peak can be reduced to just its m/z bin (fIndex) and peak intensity (value).
+/// However, having the original mz is useful for diagnostics purposes. It can be eliminated if memory becomes an
+/// issue (i.e., many, many, many spectra to search).
+/// </summary>
 typedef struct FIPeak {
 	size_t fIndex = 0;
 	double mz = 0;
@@ -15,14 +20,11 @@ typedef struct FIPeak {
 
 typedef struct FIPrecursor {
 	TopScore ts;
-	TopScoreXL tsXL;
 	double mass = 0;				//the monoisotopic neutral mass.
 	size_t pepOffset = 0;
-	size_t pepOffsetXL = 0;
 	size_t topIndex = 0;
 	double topScore = 0;
 	int scoreCount = 0;
-	int scoreCountXL = 0;
 	int charge = 0;
 	std::string peptide;  //not normally here, for diagnostics only
 
@@ -30,40 +32,30 @@ typedef struct FIPrecursor {
 		mass = 0;
 		charge = 0;
 		pepOffset = 0;
-		pepOffsetXL = 0;
 		scoreCount = 0;
-		scoreCountXL = 0;
 		topScore = 0;
 		topIndex = 0;
-		ts.Init(10);
-		tsXL.Init(20);
 	}
 	FIPrecursor(const FIPrecursor& s) {
 		mass = s.mass;
 		charge = s.charge;
 		pepOffset = s.pepOffset;
-		pepOffsetXL = s.pepOffsetXL;
 		scoreCount = s.scoreCount;
-		scoreCountXL = s.scoreCountXL;
 		topScore = s.topScore;
 		topIndex = s.topIndex;
 		peptide = s.peptide;
 		ts = s.ts;
-		tsXL = s.tsXL;
 	}
 	FIPrecursor& operator=(const FIPrecursor& s) {
 		if (this != &s) {
 			mass = s.mass;
 			charge = s.charge;
 			pepOffset = s.pepOffset;
-			pepOffsetXL = s.pepOffsetXL;
 			scoreCount = s.scoreCount;
-			scoreCountXL = s.scoreCountXL;
 			topScore = s.topScore;
 			topIndex = s.topIndex;
 			peptide = s.peptide;
 			ts = s.ts;
-			tsXL = s.tsXL;
 		}
 		return *this;
 	}
@@ -72,6 +64,11 @@ typedef struct FIPrecursor {
 } FIPrecursor;
 
 
+/// <summary>
+/// Class for storing mass spectra for database search. Not the fanciest, or most efficient (see the vectors...), 
+/// way to store the information. But the class is noteworthy for allowing multiple precursor assignments 
+/// (maintaining independent PSM score sets), allowing for isotope offsets or chimeric spectra search.
+/// </summary>
 class FISpectrum {
 public:
 	FIPeak& operator[](const size_t& index);

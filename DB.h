@@ -1,3 +1,19 @@
+/*
+Copyright 2024, Michael R. Hoopmann
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 #ifndef _DB_H
 #define _DB_H
 
@@ -34,7 +50,6 @@ namespace db_ns {
     DBPeptide(std::string s = "") : peptide(s) {}
   };
 
-
   //FASTA database structure
   typedef struct sDB {
     bool decoy;
@@ -43,6 +58,13 @@ namespace db_ns {
     std::string sequence;    //FASTA sequence
   } sDB;
 
+
+  /// <summary>
+  /// Debaser was originally written to quickly parse peptides of interest from large
+  /// FASTA-formatted proteome databases. But it can be generally used to simply
+  /// read and store FASTA files in memory. The code is small, but not necessarily
+  /// optimized for speed or memory usage. Documentation in minimal.
+  /// </summary>
   class DB {
   public:
 
@@ -63,7 +85,6 @@ namespace db_ns {
   protected:
   private:
 
-    //double        AA[128] = { 0 };
     std::vector<sDB> vDB;    //Entire FASTA database stored in memory
     std::vector<DBVertex> vTrie;
     std::vector<DBPeptide> vPeptide;

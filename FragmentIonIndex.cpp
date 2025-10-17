@@ -30,7 +30,6 @@ FragmentIonIndex::~FragmentIonIndex() {
 void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, unsigned int* arr, FIMask& fim) {
 	double* mods = new double[dbm->maxPepLen + 2]();
 	size_t bin;
-	size_t index;
 	double mass;
 	double revMass;
 	double modMass;
@@ -141,10 +140,10 @@ size_t FragmentIonIndex::FindIndex(const size_t& index, const unsigned int* arr,
 	size_t mid = upper / 2;
 	size_t best = 0;
 
-	int dif = index - arr[0];
+	int dif = (int)index - arr[0];
 	int tdif;
 	while (true) {
-		tdif = index - arr[mid];
+		tdif = (int)index - arr[mid];
 		if (tdif > 0 && tdif < dif) {
 			dif = tdif;
 			best = mid;
@@ -270,7 +269,6 @@ void FragmentIonIndex::Initialize(DBManager* d, ParamsManager* p) {
 void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsigned int* arr, FIMask& fim) {
 	double* mods = new double[dbm->maxPepLen + 2]();
 	size_t bin;
-	size_t index;
 	double mass;
 	double revMass;
 	double modMass;

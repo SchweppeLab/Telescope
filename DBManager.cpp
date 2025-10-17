@@ -3,11 +3,18 @@
 using namespace std;
 using namespace db_ns;
 
-DBManager::DBManager() {
-}
-
+/// <summary>
+/// Adds a peptide to the list if it hasn't been observed in any protein. If it has, update the list
+/// to indicate multiple instances of the peptide.
+/// </summary>
+/// <param name="pep"></param>
+/// <param name="mass"></param>
+/// <param name="dbIndex"></param>
+/// <param name="start"></param>
+/// <param name="end"></param>
+/// <param name="hasMod"></param>
 void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t start, size_t end, bool hasMod) {
-	//if (pep.compare("FDKFLQDSEAR") == 0) printf("%s\t%.6lf\t%.6lf\n",pep.c_str(),mass,mass+PROTON);
+
 	char len = (char)(end - start + 1);
 	bool newPep = false;
 	if (mass > minPepMass && len >= minPepLen) {
@@ -16,35 +23,39 @@ void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t star
 		if (it == mPeptide.end()) {
 			index = peptides.size();
 			mPeptide.insert(pair<string, size_t>(pep, index));
-			//cout << "New Peptide: " << pep << "\t" << pep.size() << "\t" << mass << endl;
 			peptides.emplace_back();
 			peptides.back().mass = mass;
 			newPep = true;
-			//if (mass > 800 && mass < 3000 && precursors.size() < SPECTRUMCOUNT) addPrecursor(pep, mass + 18.01056466, (int)mass / 700);
 		} else index = it->second;
 		peptides[index].instances.emplace_back();
 		peptides[index].instances.back().dbIndex = (unsigned int)dbIndex;
 		peptides[index].instances.back().start = (unsigned short)start;
 		peptides[index].instances.back().len = len;
 
-
+		//if peptide can be modified, recursively do so for all valid combinations here.
 		if (newPep && maxMods>0 && hasMod) {
 			string mStr;
-			//curMods = 0;
-			//memset(varModCount, 0, varMods.size());  //shouldn't be necessary.
 			AddPeptideMod(pep, index, mass, 0, dbIndex, start, end, mStr,0,0);
-			//if (curMods > topMods) {
-			//	topMods = curMods;
-			//	cout << pep << " is new max: " << curMods << endl;
-			//}
 		}
 	}
 }
 
+/// <summary>
+/// Recursive function to expand all valid combinations of variable modifications on a peptide sequence.
+/// </summary>
+/// <param name="pep"></param>
+/// <param name="pepIndex"></param>
+/// <param name="mass"></param>
+/// <param name="modMass"></param>
+/// <param name="dbIndex"></param>
+/// <param name="start"></param>
+/// <param name="end"></param>
+/// <param name="mStr"></param>
+/// <param name="mCount"></param>
+/// <param name="startAA"></param>
 void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double modMass, size_t dbIndex, size_t start, size_t end,string mStr, size_t mCount, size_t startAA) {
-	//cout << "Start at " << startAA << endl;
-	for (size_t a = startAA;a < pep.size();a++) {
 
+	for (size_t a = startAA;a < pep.size();a++) {
 		for (size_t b = 0;b < aaMods[pep[a]].size();b++) {
 
 			//The index of this mod on this amino acid in our mod vector.
@@ -57,9 +68,8 @@ void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double 
 			double mm = varMods[mi].mass;
 			if (mass + mm > minPepMass && mass + mm < maxPepMass) {
 
-				//These are temporary diagnostic counters
+				//Diagnostic counter
 				modCount++;
-				//curMods++;
 
 				//Mark the position of the mod in the mask
 				string tStr = mStr;
@@ -96,12 +106,17 @@ void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double 
 			}
 
 		}
-	
 	}
 
-//cout << "End from " << startAA << endl;
 }
 
+/// <summary>
+/// Adds a static modification to the database. Note that if an amino acid already has a static 
+/// modification, it will be overwritten with the most recent call to this function.
+/// </summary>
+/// <param name="sites"></param>
+/// <param name="mass"></param>
+/// <param name="description"></param>
 void DBManager::AddStaticMod(string sites, double mass, string description) {
 	for (size_t a = 0;a < sites.size();a++) {
 		staticMods[sites[a]].mass = mass;
@@ -109,6 +124,13 @@ void DBManager::AddStaticMod(string sites, double mass, string description) {
 	}
 }
 
+/// <summary>
+/// Adds a variable modification to the database.
+/// </summary>
+/// <param name="sites"></param>
+/// <param name="mass"></param>
+/// <param name="maxPerPeptide"></param>
+/// <param name="description"></param>
 void DBManager::AddVariableMod(string sites, double mass, int maxPerPeptide, string description) {
 	//TODO: check sites string for validity.
 	DBMModDef md;
@@ -119,6 +141,9 @@ void DBManager::AddVariableMod(string sites, double mass, int maxPerPeptide, str
 	varMods.push_back(md);
 }
 
+/// <summary>
+/// Creates an array of all variable modifications.
+/// </summary>
 void DBManager::BuildModSet() {
 	for (size_t a = 0;a < 128;a++) aaMods[a].clear();
 	for (size_t a = 0;a < varMods.size();a++) {
@@ -128,12 +153,27 @@ void DBManager::BuildModSet() {
 	}
 }
 
+/// <summary>
+/// Checks if an amino acid has a static modification.
+/// </summary>
+/// <param name="aa">: the amino acid to look up</param>
+/// <param name="mass">: the modification mass if modified</param>
+/// <param name="description">: the modification description if modified</param>
+/// <returns>true if modified</returns>
 bool DBManager::CheckStaticMod(char aa, double& mass, string& description) {
 	mass = staticMods[aa].mass;
 	description = staticMods[aa].description;
 	return mass != 0;
 }
 
+/// <summary>
+/// Digests the entire proteome to produce a set of candidate peptides for database search
+/// </summary>
+/// <param name="site">: the amino acids where digestion occurs</param>
+/// <param name="except">: exception amino acids where digestion is skipped</param>
+/// <param name="cterm">: true denotes digestion is c-terminal to the site</param>
+/// <param name="semi">: true denotes digestion is correct on only one peptide terminus</param>
+/// <returns></returns>
 size_t DBManager::DigestPeptides(std::string site, std::string except, bool cterm, bool semi) {
 	Init();
 
@@ -221,12 +261,8 @@ size_t DBManager::DigestPeptides(std::string site, std::string except, bool cter
 					}
 				}
 				if (bCut) {
-					//add the peptide
-					//cout << "ADD1" << endl;
 					AddPeptide(pep, mass + 18.01056466, a, b, c,hasMod);
 				} else if (semi && sites > 0) { //also add semi-enzymatic if the other end is the cut site.
-					//add the peptide
-					//cout << "ADD2" << endl;
 					AddPeptide(pep, mass + 18.01056466, a, b, c,hasMod);
 				}
 
@@ -239,10 +275,7 @@ size_t DBManager::DigestPeptides(std::string site, std::string except, bool cter
 			}
 
 			//if at end of sequence, see if we can add the peptide
-			if (!done) {
-				//cout << "ADD3" << endl;
-				AddPeptide(pep, mass + 18.01056466, a, b, db[a].sequence.size() - 1,hasMod);
-			}
+			if (!done) AddPeptide(pep, mass + 18.01056466, a, b, db[a].sequence.size() - 1,hasMod);
 
 			//reset our peptide and move on to the next one.
 			pep.clear();
@@ -253,36 +286,39 @@ size_t DBManager::DigestPeptides(std::string site, std::string except, bool cter
 		}
 	}
 
-	//Sort from low to high mass, so that the peptides are ready for indexing.
-	//sort(peptides.begin(), peptides.end(), sortMass);
-
-	cout << modMask.size() << " unique modification combinations." << endl;
-	cout << modCount << " modified peptide forms." << endl;
-	//for (size_t a = 0;a < modMask.size();a++) {
-	//	int count = 0;
-	//	cout << a << "\t" << modMask[a].size() << "\t";
-	//	for (size_t c = 0;c < modMask[a].size();c++) {
-	//		cout << (int)modMask[a][c] << '|';
-	//		if (modMask[a][c] != 127) count++;
-	//	}
-	//	cout << "\t" << count << endl;
-	//}
-
+	//Temporary diagnostics.
+	//cout << modMask.size() << " unique modification combinations." << endl;
+	//cout << modCount << " modified peptide forms." << endl;
+	
 	totalPeptidoforms = modCount + peptides.size();
 	delete[] varModCount;
 	return 0;
 }
 
-//Set to return first three letters only.
+/// <summary>
+/// Set to return first three letters only.
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 string DBManager::GetModDescription(const char& index) {
 	return varMods[index].description.substr(0, 3);
 }
 
-//Note that bounds are not checked here.
+/// <summary>
+/// Gets the mass of a variable modification. Note that bounds are not checked here.
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 double DBManager::GetModMass(const char& index) {
 	return varMods[index].mass;
 }
 
+/// <summary>
+/// Returns a peptide sequence from an index. If the maskIndex is >=0, then include modification annotations.
+/// </summary>
+/// <param name="index"></param>
+/// <param name="maskIndex"></param>
+/// <returns></returns>
 string DBManager::GetPeptideSequence(const size_t& index, int maskIndex) {
 	if(maskIndex==-1) return db[peptides[index].instances[0].dbIndex].sequence.substr(peptides[index].instances[0].start, peptides[index].instances[0].len);
 
@@ -305,18 +341,37 @@ string DBManager::GetPeptideSequence(const size_t& index, int maskIndex) {
 	return tmp2;
 }
 
+/// <summary>
+/// Returns the pointer to the first byte of the first instance of a peptide sequence.
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 char* DBManager::GetPepSeq(const size_t& index) {
 	return &db[peptides[index].instances[0].dbIndex].sequence[peptides[index].instances[0].start];
 }
 
+/// <summary>
+/// Returns the protein identifier
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 string DBManager::GetProteinName(const size_t& index) {
 	return db[index].name;
 }
 
+/// <summary>
+/// Returns the protein amino acid sequence
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 string& DBManager::GetProteinSeq(const size_t& index) {
 	return db[index].sequence;
 }
 
+/// <summary>
+/// Initializes the DBManager object and sets amino acid masses based on global definitions and user-defined
+/// static modifications.
+/// </summary>
 void DBManager::Init() {
 	//reset amino acid masses
 	memset(aa, 0, sizeof(double) * 128);
@@ -345,35 +400,72 @@ void DBManager::Init() {
 	aa['Y'] = CARBON * 9 + HYDROGEN * 9 + NITROGEN + OXYGEN * 2 + staticMods['Y'].mass;
 }
 
+/// <summary>
+/// Returns the modification mask as a string of positional indexes at each amino acid.
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 std::string& DBManager::ModMask(const int& index) {
 	return modMask[index];
 }
 
+/// <summary>
+/// Returns a peptide's storage memory structure
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
 DBMPeptide& DBManager::Peptide(const size_t& index) {
 	return peptides[index];
 }
 
+/// <summary>
+/// Reads a FASTA file to build a protein sequence database
+/// </summary>
+/// <param name="fn"></param>
+/// <returns></returns>
 bool DBManager::ReadFASTA(const char* fn) {
 	return db.buildDB(fn);
 }
 
+/// <summary>
+/// Reads a FASTA file to build a protein sequence database
+/// </summary>
+/// <param name="fn"></param>
+/// <returns></returns>
 bool DBManager::ReadFASTA(string fn) {
 	return ReadFASTA(fn.c_str());
 }
 
+/// <summary>
+/// Sets the maximum modifications allowed per peptide
+/// </summary>
+/// <param name="i"></param>
 void DBManager::SetMaxModsPerPeptide(int i) {
 	maxMods = i;
 }
 
+/// <summary>
+/// The number of peptides in the database.
+/// </summary>
+/// <returns></returns>
 size_t DBManager::SizePeptide() {
 	return peptides.size();
 }
 
+/// <summary>
+/// The number of proteins in the database
+/// </summary>
+/// <returns></returns>
 size_t DBManager::SizeProtein() {
 	return db.size();
 }
 
-
+/// <summary>
+/// Sorting function for ordering peptide list by mass.
+/// </summary>
+/// <param name="a"></param>
+/// <param name="b"></param>
+/// <returns></returns>
 bool DBManager::sortMass(const DBMPeptide& a, const DBMPeptide& b) {
 	return (a.mass < b.mass);
 }
