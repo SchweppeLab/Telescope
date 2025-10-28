@@ -14,7 +14,6 @@ using namespace db_ns;
 /// <param name="end"></param>
 /// <param name="hasMod"></param>
 void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t start, size_t end, bool hasMod) {
-
 	char len = (char)(end - start + 1);
 	bool newPep = false;
 	if (mass > minPepMass && len >= minPepLen) {
@@ -34,8 +33,11 @@ void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t star
 
 		//if peptide can be modified, recursively do so for all valid combinations here.
 		if (newPep && maxMods>0 && hasMod) {
+			//Diagnostics
+			//cout << "New pep: " <<  GetPeptideSequence(index) << endl;
+
 			string mStr;
-			AddPeptideMod(pep, index, mass, 0, dbIndex, start, end, mStr,0,0);
+			AddPeptideMod(pep, index, mass, 0, dbIndex, start, end, mStr,0,-1);
 		}
 	}
 }
@@ -53,60 +55,112 @@ void DBManager::AddPeptide(string& pep, double mass, size_t dbIndex, size_t star
 /// <param name="mStr"></param>
 /// <param name="mCount"></param>
 /// <param name="startAA"></param>
-void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double modMass, size_t dbIndex, size_t start, size_t end,string mStr, size_t mCount, size_t startAA) {
+void DBManager::AddPeptideMod(string& pep, size_t pepIndex, double mass, double modMass, size_t dbIndex, size_t start, size_t end,string mStr, size_t mCount, int startAA) {
 
-	for (size_t a = startAA;a < pep.size();a++) {
+	//n-terminal modification
+	if (startAA == -1) {
+		for (size_t b = 0;b < aaMods['n'].size();b++) {
+			if (ProcessVarMod('n', b, (char)pep.size(), mass, modMass, pepIndex, mStr)) {
+				size_t mi = aaMods['n'][b];
+				double mm = varMods[mi].mass;
+				string tStr = mStr;
+				tStr += (char)pep.size();
+				tStr += (char)mi;
+				varModCount[mi]++;
+				if (mCount + 1 < maxMods) AddPeptideMod(pep, pepIndex, mass + mm, modMass + mm, dbIndex, start, end, tStr, mCount + 1, 0);
+				varModCount[mi]--;
+			}
+		}
+		startAA++;
+	}
+	//c-terminal peptide modification
+	//} else if (startAA == pep.size()) {
+	//	for (size_t b = 0;b < aaMods['c'].size();b++) {
+	//		ProcessVarMod('c', b, (char)pep.size() + 1, mass, modMass, pepIndex, mStr);
+	//	}
+	//	return;
+	//}
+
+	//TODO: if start==0 or start==1, possible N-terminal protein modification
+
+	for (int a = startAA;a < pep.size();a++) {
 		for (size_t b = 0;b < aaMods[pep[a]].size();b++) {
 
-			//The index of this mod on this amino acid in our mod vector.
-			size_t mi = aaMods[pep[a]][b];
-
-			//Skip if we're already at the maximum instances for this mod
-			if (varModCount[mi] >= varMods[mi].maxPerPeptide) continue;
-
-			//Check if the new peptide mass is within database tolerances
-			double mm = varMods[mi].mass;
-			if (mass + mm > minPepMass && mass + mm < maxPepMass) {
-
-				//Diagnostic counter
-				modCount++;
-
-				//Mark the position of the mod in the mask
+			if (ProcessVarMod(pep[a], b, (char)a, mass, modMass, pepIndex, mStr)) {
+				size_t mi= aaMods[pep[a]][b];
+				double mm = varMods[mi].mass;
 				string tStr = mStr;
 				tStr += (char)a;
 				tStr += (char)mi;
-
-				//See if this mod mask has been seen before
-				size_t modIndex = 0;
-				it = mMod.find(tStr);
-				if (it == mMod.end()) {
-					modIndex = modMask.size();
-					mMod.insert(pair<string, size_t>(tStr, modIndex));
-					modMask.push_back(tStr);
-				} else modIndex = it->second;
-
-				//Add the mod to our peptide.
-				size_t c;
-				double newMM = modMass + mm;
-				for (c = 0; c < peptides[pepIndex].mods.size();c++) {
-					if (peptides[pepIndex].mods[c].mass == newMM) break; //do we need to check floating point error?
-				}
-				if (c == peptides[pepIndex].mods.size()) {
-					peptides[pepIndex].mods.emplace_back();
-					peptides[pepIndex].mods[c].mass = newMM;
-				}
-				peptides[pepIndex].mods[c].maskIndex.push_back(modIndex);
-				
-				
-				//if peptide is allowed more mods, look for more.
 				varModCount[mi]++;
-				if (mCount+1 < maxMods) AddPeptideMod(pep, pepIndex, mass + mm, newMM, dbIndex, start, end, tStr, mCount + 1,a+1);
+				if (mCount + 1 < maxMods) AddPeptideMod(pep, pepIndex, mass + mm, modMass+mm, dbIndex, start, end, tStr, mCount + 1, a + 1);
 				varModCount[mi]--;
-
 			}
 
 		}
 	}
+
+	//c-terminal peptide modification
+	for (size_t b = 0;b < aaMods['c'].size();b++) {
+		ProcessVarMod('c', b, (char)pep.size() + 1, mass, modMass, pepIndex, mStr);
+	}
+
+
+	//TODO: if end==protein length, possible C-terminal protein modification
+
+
+	//for (size_t a = startAA;a < pep.size();a++) {
+	//	for (size_t b = 0;b < aaMods[pep[a]].size();b++) {
+
+	//		//The index of this mod on this amino acid in our mod vector.
+	//		size_t mi = aaMods[pep[a]][b];
+
+	//		//Skip if we're already at the maximum instances for this mod
+	//		if (varModCount[mi] >= varMods[mi].maxPerPeptide) continue;
+
+	//		//Check if the new peptide mass is within database tolerances
+	//		double mm = varMods[mi].mass;
+	//		if (mass + mm > minPepMass && mass + mm < maxPepMass) {
+
+	//			//Diagnostic counter
+	//			modCount++;
+
+	//			//Mark the position of the mod in the mask
+	//			string tStr = mStr;
+	//			tStr += (char)a;
+	//			tStr += (char)mi;
+
+	//			//See if this mod mask has been seen before
+	//			size_t modIndex = 0;
+	//			it = mMod.find(tStr);
+	//			if (it == mMod.end()) {
+	//				modIndex = modMask.size();
+	//				mMod.insert(pair<string, size_t>(tStr, modIndex));
+	//				modMask.push_back(tStr);
+	//			} else modIndex = it->second;
+
+	//			//Add the mod to our peptide.
+	//			size_t c;
+	//			double newMM = modMass + mm;
+	//			for (c = 0; c < peptides[pepIndex].mods.size();c++) {
+	//				if (peptides[pepIndex].mods[c].mass == newMM) break; //do we need to check floating point error?
+	//			}
+	//			if (c == peptides[pepIndex].mods.size()) {
+	//				peptides[pepIndex].mods.emplace_back();
+	//				peptides[pepIndex].mods[c].mass = newMM;
+	//			}
+	//			peptides[pepIndex].mods[c].maskIndex.push_back(modIndex);
+	//			
+	//			
+	//			//if peptide is allowed more mods, look for more.
+	//			varModCount[mi]++;
+	//			if (mCount+1 < maxMods) AddPeptideMod(pep, pepIndex, mass + mm, newMM, dbIndex, start, end, tStr, mCount + 1,a+1);
+	//			varModCount[mi]--;
+
+	//		}
+
+	//	}
+	//}
 
 }
 
@@ -190,6 +244,8 @@ size_t DBManager::DigestPeptides(std::string site, std::string except, bool cter
 		int sites = 0; //cut sites
 		bool hasMod = false;
 		bool done = false;
+
+		if (aaMods['n'].size() > 0 || aaMods['c'].size() > 0) hasMod = true;
 
 		//Iterate over all amino acids
 		for (size_t b = 0;b < db[a].sequence.size();b++) {
@@ -283,6 +339,7 @@ size_t DBManager::DigestPeptides(std::string site, std::string except, bool cter
 			sites = 0;
 			hasMod = false;
 			done = false;
+			if (aaMods['n'].size() > 0 || aaMods['c'].size() > 0) hasMod = true;
 		}
 	}
 
@@ -323,20 +380,22 @@ string DBManager::GetPeptideSequence(const size_t& index, int maskIndex) {
 	if(maskIndex==-1) return db[peptides[index].instances[0].dbIndex].sequence.substr(peptides[index].instances[0].start, peptides[index].instances[0].len);
 
 	string tmp = db[peptides[index].instances[0].dbIndex].sequence.substr(peptides[index].instances[0].start, peptides[index].instances[0].len);
-	char* mods=new char[tmp.size()];
-	for (size_t a = 0;a < tmp.size();a++) mods[a] = -1;
+	char* mods=new char[tmp.size()+2];
+	for (size_t a = 0;a < tmp.size()+2;a++) mods[a] = -1;
 
 	string mask = ModMask(maskIndex);
-	for (size_t b = 0;b < mask.size();b += 2) {
-		//TODO: process the position for the special cases of n- and c-termini
-		mods[mask[b]] = mask[b + 1];
-	}
+	for (size_t b = 0;b < mask.size();b += 2) mods[mask[b]] = mask[b + 1];
 
 	string tmp2;
+	//n-terminus
+	if(mods[tmp.size()]>-1) tmp2 += "[" + GetModDescription(mods[tmp.size()]) + "]";
+	//peptide sequence
 	for (size_t a = 0;a < tmp.size();a++) {
 		tmp2 += tmp[a];
 		if (mods[a] > -1) tmp2 += "[" + GetModDescription(mods[a]) + "]";
 	}
+	//c-terminus
+	if (mods[tmp.size()+1] > -1) tmp2 += "[" + GetModDescription(mods[tmp.size()+1]) + "]";
 	delete[] mods;
 	return tmp2;
 }
@@ -416,6 +475,54 @@ std::string& DBManager::ModMask(const int& index) {
 /// <returns></returns>
 DBMPeptide& DBManager::Peptide(const size_t& index) {
 	return peptides[index];
+}
+
+bool DBManager::ProcessVarMod(char aa,size_t modIndex,char pos, double pepMass, double modMass, size_t pepIndex, const string& maskStr) {
+	//The index of this mod on this amino acid in our mod vector.
+	size_t mi = aaMods[aa][modIndex];
+
+	//Skip if we're already at the maximum instances for this mod
+	if (varModCount[mi] >= varMods[mi].maxPerPeptide) return false;
+
+	//Check if the new peptide mass is within database tolerances
+	double mm = varMods[mi].mass;
+	if (pepMass + mm > minPepMass && pepMass + mm < maxPepMass) {
+
+		//Diagnostic counter
+		modCount++;
+
+		//Mark the position of the mod in the mask
+		string tStr = maskStr;
+		tStr += pos;
+		tStr += (char)mi;
+
+		//See if this mod mask has been seen before
+		size_t modIndex = 0;
+		it = mMod.find(tStr);
+		if (it == mMod.end()) {
+			modIndex = modMask.size();
+			mMod.insert(pair<string, size_t>(tStr, modIndex));
+			modMask.push_back(tStr);
+		} else modIndex = it->second;
+
+		//Add the mod to our peptide.
+		size_t c;
+		double newMM = modMass + mm;
+		for (c = 0; c < peptides[pepIndex].mods.size();c++) {
+			if (peptides[pepIndex].mods[c].mass == newMM) break; //do we need to check floating point error?
+		}
+		if (c == peptides[pepIndex].mods.size()) {
+			peptides[pepIndex].mods.emplace_back();
+			peptides[pepIndex].mods[c].mass = newMM;
+		}
+		peptides[pepIndex].mods[c].maskIndex.push_back(modIndex);
+
+		//For diagnostics
+		//cout << GetPeptideSequence(pepIndex, peptides[pepIndex].mods[c].maskIndex.back()) << endl;
+
+		return true;
+	}
+	return false;
 }
 
 /// <summary>

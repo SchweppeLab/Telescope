@@ -31,10 +31,7 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
   for (size_t b = 0;b < peptide.size()+2;b++) mods[b] = -1;
   if (modIndex > -1) {
     string mask = dbm->ModMask(maskIndex);
-    for (size_t c = 0;c < mask.size();c += 2) {
-      //TODO: process the position for the special cases of n- and c-termini
-      mods[mask[c]] = mask[c + 1];
-    }
+    for (size_t c = 0;c < mask.size();c += 2) mods[mask[c]] = mask[c + 1];
   }
 
   string modPep;
@@ -42,6 +39,13 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
   double stMass;
   CnpxModificationInfo mi;
   bool hasMod = false;
+
+  //Add the n-terminal mod
+  if (mods[peptide.size()] > -1) {
+    hasMod = true;
+    mi.mod_nterm_mass = dbm->GetModMass(mods[peptide.size()]);
+    modPep += "n[" + to_string((int)(mi.mod_nterm_mass + HYDROGEN + 0.5)) + "]";
+  }
 
   //Iterate over all amino acids, generating an extended peptide string that includes the variable modification masses
   for (size_t b = 0;b < peptide.size();b++) {
@@ -67,6 +71,13 @@ CnpxModificationInfo ResultsExporter::CreateModificationInfo(const std::string& 
       modPep += "[" + to_string((int)(maam.mass + 0.5)) + "]";
       mi.mod_aminoacid_mass.push_back(maam);
     }
+  }
+
+  //Add the c-terminal mod
+  if (mods[peptide.size() + 1] > -1) {
+    hasMod = true;
+    mi.mod_cterm_mass = dbm->GetModMass(mods[peptide.size() + 1]);
+    modPep += "c[" + to_string((int)(mi.mod_cterm_mass + HYDROGEN + OXYGEN + 0.5)) + "]";
   }
 
   //Add modified_peptide element if it exists and free memory

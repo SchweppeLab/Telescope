@@ -52,7 +52,6 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 
 			string mask = dbm->ModMask(peptides[a].maskIndex);
 			for (size_t b = 0;b < mask.size();b += 2) {
-				//TODO: process the position for the special cases of n- and c-termini
 				mods[mask[b]] = dbm->GetModMass(mask[b + 1]);
 			}
 		}
@@ -67,7 +66,8 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 			//One pass for all the ions
 			mass = 0;
 			revMass = peptides[a].mass;
-			modMass = 0;
+			if (hasMods) modMass = mods[len]; //include n-terminal mod mass, if any
+			else modMass = 0;
 
 			//Iterate over each amino acid in the peptide sequence.
 			for (char b = 0;b < len - 1;b++) {
@@ -290,7 +290,6 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 
 			string mask = dbm->ModMask(peptides[a].maskIndex);
 			for (size_t b = 0;b < mask.size();b += 2) {
-				//TODO: process the position for the special cases of n- and c-termini
 				mods[mask[b]] = dbm->GetModMass(mask[b + 1]);
 			}
 		}
@@ -302,7 +301,8 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 			//One pass for all the ions
 			mass = 0;
 			revMass = peptides[a].mass;
-			modMass = 0;
+			if (hasMods) modMass = mods[len];
+			else modMass = 0;
 
 			//Iterate over the amino acids
 			for (char b = 0;b < len - 1;b++) {
