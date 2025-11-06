@@ -77,6 +77,7 @@ public:
 	void AddPeak(const FIPeak& peak);
 	size_t Capacity();
 	std::vector<FIPeak>& GetPeaks();
+	void Reserve(const size_t& sz);
 	size_t Size();
 	void SortMz();
 
@@ -87,6 +88,38 @@ protected:
 private:
 
 	std::vector<FIPeak> peaks;  //Should be no higher than highBin to save memory...
+
+	static bool sortMzLH(const FIPeak& a, const FIPeak& b);
+};
+
+class FISpectrum2 {
+public:
+	FISpectrum2();
+	FISpectrum2(const FISpectrum2& s);
+	~FISpectrum2();
+
+	FISpectrum2& operator=(const FISpectrum2& s);
+	FIPeak& operator[](const size_t& index);
+
+	void AddPeak(const size_t& fIndex, const double& mz, const float& value);
+	void AddPeak(const FIPeak& peak);
+	bool Allocate(const size_t& sz);
+	size_t Capacity();
+	void Clear();
+	void Deallocate();
+	//FIPeak* GetPeaks();
+	size_t Size();
+	void SortMz();
+
+	std::vector<FIPrecursor> precursor;
+	int scanNumber = 0;
+
+protected:
+private:
+
+	FIPeak* peaks = nullptr;  //Should be no higher than highBin to save memory...
+	size_t curSz = 0;
+	size_t maxSz = 0;
 
 	static bool sortMzLH(const FIPeak& a, const FIPeak& b);
 };

@@ -22,7 +22,7 @@ private:
 
 	CnpxModificationInfo CreateModificationInfo(const std::string& peptide, const int& modIndex, const int& maskIndex);
 	CnpxSearchHit CreateSearchHit(const ScoreStruct& ss);
-	CnpxSpectrumQuery CreateSpectrumQuery(const FISpectrum& spec);
+	CnpxSpectrumQuery CreateSpectrumQuery(const FISpectrum2& spec);
 
 	DBManager* dbm = nullptr;
 	FragmentIonIndex* fii = nullptr;

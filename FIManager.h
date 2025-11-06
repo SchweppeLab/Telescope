@@ -13,8 +13,8 @@ struct sSearchStruct {
 	Mutex* mutex=nullptr;
 	bool* thread=nullptr;
 	FragmentIonIndex* fii = nullptr;
-  FISpectrum* scan = nullptr;
-  sSearchStruct(FragmentIonIndex* f, FISpectrum* s) {
+  FISpectrum2* scan = nullptr;
+  sSearchStruct(FragmentIonIndex* f, FISpectrum2* s) {
 		fii = f;
     scan = s;
   }
@@ -73,7 +73,7 @@ public:
 	bool GeneratePeptideMap();
 	bool GenerateIndex();
 	void Initialize(DBManager* d, ParamsManager* p);
-	bool ScoreSpectrum(std::vector<FISpectrum>& scans);
+	bool ScoreSpectrum(std::vector<FISpectrum2>& scans);
 	bool ScoreSpectrum(DataLoader& scans);
 
 	FragmentIonIndex fii;

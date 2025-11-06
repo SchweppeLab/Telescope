@@ -5,6 +5,8 @@
 #include "GlobalDefinitions.h"
 #include "ParamsManager.h"
 
+#include <chrono>
+
 /// <summary>
 /// Class that replicates the xcorr scoring transformations in Comet to spectral data.
 /// Note that this processing is somewhat expensive, and can probably be approximated
@@ -16,7 +18,10 @@ public:
 	~FastXCorr();
 
 	bool Initialize(ParamsManager* p);
-	bool ProcessSpectrum(FISpectrum& spec);
+	bool ProcessSpectrum(FISpectrum2& spec);
+
+	size_t ReportTime();
+	void ResetTime();
 
 protected:
 private:
@@ -26,8 +31,8 @@ private:
 	void Deallocate();
 
 	//Adapted from Kojak, originally adapted from Comet
-	void XCorr(std::vector<FIPeak>& spec, double& max);
-	void BinIons(std::vector<FIPeak>& spec, double& max);
+	void XCorr(FISpectrum2& spec, double& max);
+	void BinIons(FISpectrum2& spec, double& max);
 	void MakeCorrData(double scale);
 
 	ParamsManager* params = nullptr;
@@ -36,11 +41,14 @@ private:
 	double* pdTempRawData = nullptr;
 	double* pdTmpFastXcorrData = nullptr;
 	float* pfFastXcorrData = nullptr;
+	size_t* sparseIndex = nullptr;
 
 	int iHighestIon = 0;
+	int iMax = 0;
 	double dHighestIntensity = 0;
-	double* pdMzData = nullptr;
 	double* pdCorrelationData = nullptr;
+
+	size_t nanoseconds=0;
 
 };
 

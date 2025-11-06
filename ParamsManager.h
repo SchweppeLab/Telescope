@@ -32,6 +32,7 @@ public:
 	double minMZ = 200.0;        //lowest spectral mass to search
 	double maxMZ = 2000.0;       //highed spectral mass to search
 	double minPeak = 2; //1e-6   //magnitude (absolute) threshold following Xcorr transformation
+	int maxFragZ = 3;						 //maximum possible charge state of fragment ions
 	bool xcorr = true;           //perform Xcorr transformation
 
 	//Database Parsing Parameters

@@ -117,11 +117,11 @@ void FIManager::InternalGenerateIndex() {
 
 	//Generate index to temporary memory, then add them all up in order
 	size_t th = threads;
-	size_t z = 3;
+	size_t z = params->maxFragZ;
 	size_t maxBin = fii.maxBin;
 	unsigned int* binSz = new unsigned int[th * z * maxBin]();
 	FIMask* mask = new FIMask[threads];
-	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * 3, fii.maxBin);
+	for (size_t a = 0;a < threads;a++) mask[a].Allocate(params->maxPepLen * 2 * params->maxFragZ, fii.maxBin);
 
 	//Determine the index sizes at each bin within each thread
 	ThreadPool<sGenIndex*>* pool = new ThreadPool<sGenIndex*>(CalcIndexSzProcess, (int)threads, (int)threads, 1);
@@ -151,7 +151,7 @@ void FIManager::InternalGenerateIndex() {
 	int lastBin = (int)th - 1;
 	size_t frags = 0;
 	size_t bytes = 0;
-	for (int a = 0;a < 3;a++) {
+	for (int a = 0;a < params->maxFragZ;a++) {
 		fii.bins[a] = new unsigned int* [maxBin];
 		fii.binSz[a] = new unsigned int[maxBin]();
 
@@ -167,7 +167,7 @@ void FIManager::InternalGenerateIndex() {
 
 	//TODO: Get rid of this or find a better place to export messages to the user
 	cout << "Total fragment ions: " << frags << endl;
-	cout << "Estimated frament index size: " << (double)bytes / 1073741824 << " Gb." << endl;
+	cout << "Estimated fragment index size: " << (double)bytes / 1073741824 << " Gb." << endl;
 
 	//Generate the peptide index in a threaded manner
 	ThreadPool<sGenIndex*>* pool2 = new ThreadPool<sGenIndex*>(CalcIndexProcess, (int)threads, (int)threads, 1);
@@ -184,7 +184,7 @@ void FIManager::InternalGenerateIndex() {
 	delete pool2;
 
 	//Copy over index bin sizes (from last array)
-	for (int a = 0;a < 3;a++) {
+	for (int a = 0;a < params->maxFragZ;a++) {
 		for (size_t b = 0;b < maxBin;b++) {
 			fii.binSz[a][b] = binSz[lastBin * z * maxBin + a * maxBin + b];
 		}
@@ -201,7 +201,7 @@ void FIManager::InternalGenerateIndex() {
 /// </summary>
 /// <param name="scans">FISpectrum object</param>
 /// <returns>true if successful</returns>
-bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
+bool FIManager::ScoreSpectrum(vector<FISpectrum2>& scans) {
 
 	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, (int)threads, (int)threads, 1);
 	for (size_t b = 0;b < scans.size();b++) {

@@ -31,7 +31,7 @@ DataLoader::~DataLoader() {
 /// </summary>
 /// <param name="index">position of the scan in the scans array</param>
 /// <returns>FISpectrum scan object</returns>
-FISpectrum& DataLoader::operator[](const size_t& index) {
+FISpectrum2& DataLoader::operator[](const size_t& index) {
 	return scans[index];
 }
 
@@ -78,7 +78,7 @@ bool DataLoader::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p)
 /// </summary>
 /// <param name="s"></param>
 /// <param name="tIndex"></param>
-void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
+void DataLoader::ProcessSpectrum(FISpectrum2& s, int tIndex) {
 	xcorr[tIndex].ProcessSpectrum(s);
 }
 
@@ -140,11 +140,14 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			//what to do if charge=0?
 			if (charge == 0) charge = 3;
 			double mass = mz * charge - (charge * PROTON);
-			if (mass<params->minPepMass || mass>params->maxPepMass) goto NEXTSCAN;
+			if (mass+PROTON<params->minPepMass || mass+PROTON>params->maxPepMass) goto NEXTSCAN; //M+H to match Comet...
 
-			double err = mass / 1e6 * params->ppm;
-			double min = mass - err;
-			double max = mass + err;
+			//The peptide mass tolerance boundaries here replicate how Comet computes them (which is M+H space...)
+			double mzErr = mz / 1e6 * params->ppm;
+			double mzMin = mz - mzErr;
+			double mzMax = mz + mzErr;
+			double min = mzMin * charge - (charge * PROTON);
+			double max = mzMax *charge - (charge * PROTON);
 			size_t index = fii->FindPeptideIndex(min); //should return the first index below the desired mass
 			while (fii->peptides[index].mass < min) index++;
 
@@ -165,6 +168,9 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			if (count > maxScoreCount) maxScoreCount = count;
 
 			//Add the peaks
+			//scans[scanIndex].Reserve((size_t)s.size());
+			//cout << scans[scanIndex].Capacity() << endl;
+			scans[scanIndex].Allocate((size_t)s.size());
 			for (int a = 0;a < s.size();a++) {
 				if (s[a].mz > params->maxMZ) break; //assuming mz values are in order from low to high.
 				FIPeak p;
@@ -201,4 +207,12 @@ bool DataLoader::ReadSpectra(const string& fn) {
 /// <returns>the number of spectra</returns>
 size_t DataLoader::Size() {
 	return scans.size();
+}
+
+size_t DataLoader::XCorrTime() {
+	size_t ms = 0;
+	for (size_t a = 0;a < threads;a++) {
+		ms += xcorr[a].ReportTime();
+	}
+	return ms/1000;
 }

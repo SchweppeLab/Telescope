@@ -16,8 +16,8 @@
 struct sSpectrumStruct {
 	Mutex* mutex = nullptr;
 	bool* thread = nullptr;
-	FISpectrum* scan = nullptr;
-	sSpectrumStruct(FISpectrum* s) {
+	FISpectrum2* scan = nullptr;
+	sSpectrumStruct(FISpectrum2* s) {
 		scan = s;
 	}
 	~sSpectrumStruct() {
@@ -45,11 +45,12 @@ public:
 	DataLoader();
 	~DataLoader();
 
-	FISpectrum& operator[](const size_t& index);
+	FISpectrum2& operator[](const size_t& index);
 
 	bool Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p);
 	bool ReadSpectra(const std::string& fn);
 	size_t Size();
+	size_t XCorrTime();
 
 	//This obscure data member is used to identify the largest number of peptides
 	//that will be scored against any one spectrum. It is used to buffer a score array
@@ -61,13 +62,13 @@ private:
 
 	void Allocate();
 	void Deallocate();
-	static void ProcessSpectrum(FISpectrum& s, int tIndex);
+	static void ProcessSpectrum(FISpectrum2& s, int tIndex);
 	static void ProcessSpectrumProc(sSpectrumStruct* s);
 
 	DBManager* dbm = nullptr;
 	FragmentIonIndex* fii = nullptr;
 	ParamsManager* params = nullptr;
-	std::vector<FISpectrum> scans;
+	std::vector<FISpectrum2> scans;
 
 	//array of xcorr transformers, one per thread
 	static FastXCorr* xcorr; 

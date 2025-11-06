@@ -47,6 +47,12 @@ void ParamsManager::ProcessParam(vector<string>& par) {
 	} else if (par[0].compare("enzyme_specificity") == 0) {
 		if (par[1][0] == '0') semiEnzyme = false;
 		else semiEnzyme = true;
+	} else if (par[0].compare("max_frag_z") == 0) {
+		maxFragZ = stoi(par[1]);
+		if (maxFragZ < 1) {
+			cout << "WARNING: max_frag_z was set to lower limit o1." << endl;
+			maxFragZ = 1;
+		}
 	} else if (par[0].compare("max_missed_cleavage") == 0) {
 		maxMC = stoi(par[1]);
 	} else if (par[0].compare("max_mz") == 0) {

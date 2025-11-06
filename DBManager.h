@@ -79,11 +79,11 @@ public:
 protected:
 private:
 
-	void AddPeptide(std::string& pep, double mass, size_t dbIndex, size_t start, size_t end, bool hasMod);
-	void AddPeptideMod(std::string& pep, size_t pepIndex, double mass, double modMass, size_t dbIndex, size_t start, size_t end, std::string mStr, size_t mCount, int startAA);
+	bool AddPeptide(std::string& pep, double mass, size_t dbIndex, size_t start, size_t end, bool hasMod);
+	void AddPeptideMod(std::string& pep, size_t pepIndex, double mass, double modMass, size_t dbIndex, size_t start, size_t end, std::string mStr, size_t mCount, int startAA, const double& baseMass);
 	void BuildModSet();
 	void Init();
-	bool ProcessVarMod(char aa, size_t modIndex, char pos, double pepMass, double modMass, size_t pepIndex, const std::string& maskStr);
+	bool ProcessVarMod(char aa, size_t modIndex, char pos, double pepMass, double modMass, size_t& pepIndex, const std::string& pepStr, const std::string& maskStr, const size_t& dbIndex, const size_t& start, const char len, const double& basePepMass);
 
 	db_ns::DB db;
 	

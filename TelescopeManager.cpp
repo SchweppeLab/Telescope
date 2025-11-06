@@ -205,6 +205,8 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 
 			cout << "Duration: " << duration_milliseconds.count() << " ms." << endl;
 			cout << (double)duration_milliseconds.count() / scans.Size() << " ms average per scan." << endl;
+			cout << scans.XCorrTime() << " ms spent on FastXCorr." << endl;
+			cout << (double)scans.XCorrTime()/scans.Size() << " ms average per scan on FastXCorr." << endl;
 
 			//Calculate the approximate memory useage. Note that the precursor sizes are not fully calculated
 			long long bytes = 0;

@@ -120,7 +120,7 @@ CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
       sh.alternative_protein.emplace_back();
       sh.alternative_protein.back().protein = dbm->GetProteinName(pi->dbIndex);
       sh.alternative_protein.back().peptide_start_pos = (int)pi->start + 1;
-      if (sh.peptide_start_pos > 1) sh.alternative_protein.back().peptide_prev_aa = seq[pi->start - 1];
+      if (sh.alternative_protein.back().peptide_start_pos > 1) sh.alternative_protein.back().peptide_prev_aa = seq[pi->start - 1];
       else sh.alternative_protein.back().peptide_prev_aa = "-";
       if (pi->start + pi->len < seq.size() - 1) sh.alternative_protein.back().peptide_next_aa = seq[pi->start + pi->len];
       else sh.alternative_protein.back().peptide_next_aa = "-";
@@ -139,7 +139,7 @@ CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
 /// </summary>
 /// <param name="spec">FISpectrum object</param>
 /// <returns>spectrum_query element</returns>
-CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum& spec) {
+CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum2& spec) {
   CnpxSpectrumQuery sq;
   sq.spectrum = to_string(spec.scanNumber);
   sq.start_scan = spec.scanNumber;
@@ -254,7 +254,7 @@ bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
 
       //Create search_hit element for this spectrum, update the mass difference and rank.
       CnpxSearchHit sh = CreateSearchHit(scans[a].precursor[0].ts[b]);
-      sh.massdiff = sh.calc_neutral_pep_mass - sq.precursor_neutral_mass;
+      sh.massdiff = sq.precursor_neutral_mass - sh.calc_neutral_pep_mass;
       if (b == 0) sh.hit_rank = 1;
       else {
         if (scans[a].precursor[0].ts[b].score < scans[a].precursor[0].ts[b - 1].score) sh.hit_rank = sq.search_result.back().search_hit.back().hit_rank + 1;

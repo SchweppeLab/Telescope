@@ -73,17 +73,21 @@ public:
 
 	void Initialize(DBManager* d, ParamsManager* p);
 	void PopulateIndex(unsigned int start, unsigned int stop, unsigned int* arr, FIMask& fim);
-	bool ScoreSpectrum(FISpectrum& scan, double* scores);
+	bool ScoreSpectrum(FISpectrum2& scan, double* scores);
 	//void SetBinSize(double bs); //TODO: Get rid of this, and use the params object
 	size_t SizePeptide();
 	void SortPeptides();
 
-	//The fragment ion indexes. Up to 3 charge states stored for fragment indexes
-	//It could be argued that the +3 fragment ions would rarely be used.
-	//It might make more sense then to make the number of index arrays dynamic (triple pointers...)
-	//and test, as saving the memory could be big in terms of performance.
-	unsigned int** bins[3] = { nullptr };
-	unsigned int* binSz[3] = { nullptr };
+	//The fragment ion index. The number of index arrays is dynamic (triple pointers...)
+	//as one could argue that reducing the number of fragment ion charge states (say from 3 to 2) can
+	//save a lot of memory with minimal impact on scores. The other two dimensions after charge state are
+	//mz-bin and peptidoform map index: bins[z][mz][index]
+	unsigned int*** bins = { nullptr };
+
+	//The fragment ion index dimensions. This is necessary to identify the number of fragment ions
+	//indexed at each mz for each charge state, and defines boundaries and memory consumption.
+	//binSz[z][mz].
+	unsigned int** binSz = { nullptr };
 
 	FIIPeptide* peptides = nullptr;  //all the peptides in the database
 	size_t pepArrSz = 0;             //the size of peptides

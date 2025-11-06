@@ -40,6 +40,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 	//This must be interpreted to make a modification mass array that aligns with each amino acid position in
 	//the peptide sequence.
 	for (unsigned int a = start;a < stop;a++) {
+
 		//get peptide as a string
 		char* seq = dbm->GetPepSeq(peptides[a].peptideIndex); //perhaps a bit faster to grab a pointer to memory instead of copying a string.
 		char len = dbm->Peptide(peptides[a].peptideIndex).instances[0].len;
@@ -61,7 +62,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 		//Start with the lowest charge state, such that when duplicates happen, the larger charge states
 		//are skipped. That way, the most complete set of fragment ion mz values is always at the lowest
 		//possible charge state.
-		for (int z = 0;z < 3;z++) {
+		for (int z = 0;z < params->maxFragZ;z++) {
 
 			//One pass for all the ions
 			mass = 0;
@@ -116,7 +117,7 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 /// Frees all index memory.
 /// </summary>
 void FragmentIonIndex::DeleteIndex() {
-	for (int a = 0;a < 3;a++) {
+	for (int a = 0;a < params->maxFragZ;a++) {
 		if (binSz[a] != NULL) {
 			for (size_t b = 0;b < maxBin;b++) {
 				if (binSz[a][b] > 0) delete[] bins[a][b];
@@ -125,6 +126,8 @@ void FragmentIonIndex::DeleteIndex() {
 			delete[] binSz[a];
 		}
 	}
+	delete[] bins;
+	delete[] binSz;
 }
 
 /// <summary>
@@ -220,8 +223,12 @@ bool FragmentIonIndex::GeneratePeptideMap() {
 	//Iterate the peptides to generate complete peptide map.
 	size_t index = 0;
 	for (size_t a = 0;a < dbm->SizePeptide();a++) {
-		peptides[index].mass = dbm->Peptide(a).mass;
-		peptides[index++].peptideIndex = (unsigned int)a;
+
+		//it is possible for a peptide to be below the mass threshold, but have modifications that put it above the mass threshold
+		if (dbm->Peptide(a).mass +PROTON > params->minPepMass) {
+			peptides[index].mass = dbm->Peptide(a).mass;
+			peptides[index++].peptideIndex = (unsigned int)a;
+		}
 
 		for (size_t b = 0;b < dbm->Peptide(a).mods.size();b++) {
 			for (size_t c = 0;c < dbm->Peptide(a).mods[b].maskIndex.size();c++) {
@@ -249,6 +256,8 @@ void FragmentIonIndex::Initialize(DBManager* d, ParamsManager* p) {
 	params = p;
 	invBinSize = 1 / params->binSize;
 	maxBin = (size_t)(invBinSize * params->maxMZ + 1 + 0.5);
+	bins = new unsigned int** [params->maxFragZ];
+	binSz = new unsigned int* [params->maxFragZ];
 }
 
 //Note that if arrA is null, then index population is from the beginning of the array, not at the position
@@ -296,7 +305,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 
 		//Iterate over each charge state. By processing lowest charge states first,
 		//duplicate fragment ion mz values will be skipped in the higher charge states.
-		for (int z = 0;z < 3;z++) {
+		for (int z = 0;z < params->maxFragZ;z++) {
 
 			//One pass for all the ions
 			mass = 0;
@@ -353,7 +362,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 /// <param name="scan">The FISpectrum object data to be scored</param>
 /// <param name="scores">A block of memory sufficient to hold all the PSM scores</param>
 /// <returns>true upon success</returns>
-bool FragmentIonIndex::ScoreSpectrum(FISpectrum& scan, double* scores) {
+bool FragmentIonIndex::ScoreSpectrum(FISpectrum2& scan, double* scores) {
 
 	//Iterate over each precursor associated with this scan. Note that having multiple precursors
 	//is useful for either:
@@ -374,7 +383,7 @@ bool FragmentIonIndex::ScoreSpectrum(FISpectrum& scan, double* scores) {
 
 		//Find the maximum fragment ion charge state for the precursor ion.
 		int charge = scan.precursor[p].charge - 1;
-		if (charge > 3) charge = 3;
+		if (charge > params->maxFragZ) charge = params->maxFragZ;
 		if (charge < 1) charge = 1;
 
 		//Iterate over all possible charge states
