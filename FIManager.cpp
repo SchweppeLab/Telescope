@@ -201,7 +201,7 @@ void FIManager::InternalGenerateIndex() {
 /// </summary>
 /// <param name="scans">FISpectrum object</param>
 /// <returns>true if successful</returns>
-bool FIManager::ScoreSpectrum(vector<FISpectrum2>& scans) {
+bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 
 	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, (int)threads, (int)threads, 1);
 	for (size_t b = 0;b < scans.size();b++) {

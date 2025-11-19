@@ -103,6 +103,10 @@ CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
 
   //Add scores
   sh.addSearchScore("xcorr", to_string(ss.score));
+  if (params->expect) {
+    sprintf(cBuf, "%.2E", ss.eValue);
+    sh.addSearchScore("expect", string(cBuf));
+  }
 
   //Protein information
   sh.num_tot_proteins = (int)dbm->Peptide(pepIndex).instances.size();
@@ -139,7 +143,7 @@ CnpxSearchHit ResultsExporter::CreateSearchHit(const ScoreStruct& ss) {
 /// </summary>
 /// <param name="spec">FISpectrum object</param>
 /// <returns>spectrum_query element</returns>
-CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum2& spec) {
+CnpxSpectrumQuery ResultsExporter::CreateSpectrumQuery(const FISpectrum& spec) {
   CnpxSpectrumQuery sq;
   sq.spectrum = to_string(spec.scanNumber);
   sq.start_scan = spec.scanNumber;

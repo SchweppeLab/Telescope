@@ -482,6 +482,7 @@ void DBManager::Init() {
 	aa['V'] = CARBON * 5 + HYDROGEN * 9 + NITROGEN + OXYGEN + staticMods['V'].mass;
 	aa['W'] = CARBON * 11 + HYDROGEN * 10 + NITROGEN * 2 + OXYGEN + staticMods['W'].mass;
 	aa['Y'] = CARBON * 9 + HYDROGEN * 9 + NITROGEN + OXYGEN * 2 + staticMods['Y'].mass;
+	aa['X'] = CARBON * 10000 + staticMods['X'].mass;
 }
 
 /// <summary>

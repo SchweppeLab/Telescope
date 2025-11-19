@@ -47,6 +47,9 @@ void ParamsManager::ProcessParam(vector<string>& par) {
 	} else if (par[0].compare("enzyme_specificity") == 0) {
 		if (par[1][0] == '0') semiEnzyme = false;
 		else semiEnzyme = true;
+	} else if (par[0].compare("expect") == 0) {
+		if (par[1][0] == '0') expect = false;
+		else expect = true;
 	} else if (par[0].compare("max_frag_z") == 0) {
 		maxFragZ = stoi(par[1]);
 		if (maxFragZ < 1) {
@@ -107,6 +110,9 @@ void ParamsManager::ProcessParam(vector<string>& par) {
 	} else if (par[0].compare("xcorr") == 0) {
 		if (par[1][0] == '0') xcorr = false;
 		else xcorr = true;
+	} else if (par[0].compare("ultra_xcorr") == 0) {
+		if (par[1][0] == '0') ultraxcorr = false;
+		else ultraxcorr = true;
 	} else {
 		cout << "Unknown parameter: " << par[0] << endl;
 	}

@@ -9,6 +9,12 @@ using namespace std;
 /// <param name="echo"></param>
 /// <returns>0 if successful, or integer error code</returns>
 int TelescopeManager::Launch(bool echo) {
+	char tstr[100];
+
+	time_t currentTime = time(nullptr);
+	strftime(tstr, 50, "%m/%d/%Y, %I:%M:%S %p", localtime(&currentTime));
+	cout << "Running Telescope: " << tstr << endl;
+
 	//---------------------
 	// STEP #1: Confirm parameters.
 	//---------------------
@@ -44,6 +50,11 @@ int TelescopeManager::Launch(bool echo) {
 		string out = params.dataFile[a].substr(0, ext + 1) + "ts.pep.xml";
 		if (!ExportResults(out, echo)) return 7;
 	}
+
+	time_t finishTime = time(nullptr);
+	strftime(tstr, 50, "%m/%d/%Y, %I:%M:%S %p", localtime(&finishTime));
+	cout << "Telescope Completed: " << tstr << endl;
+	cout << "Total run time: " << difftime(finishTime,currentTime) << " seconds." << endl;
 
 	return 0;
 }
@@ -193,6 +204,7 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 	//does any processing (e.g., Xcorr transformation) prior to analysis. Note that when reading the
 	//spectra, the fragment ion index is required to determine the peptide indexes to search.
 	if (echo) cout << "------------\nReading and Processing " + fn + " ...";
+	scans.ResetTimer();
 	start_time = chrono::high_resolution_clock::now();
 	bool ret = scans.ReadSpectra(fn);  	//Load spectra
 	end_time = std::chrono::high_resolution_clock::now();
@@ -207,11 +219,12 @@ bool TelescopeManager::ProcessSpectra(const std::string& fn, bool echo) {
 			cout << (double)duration_milliseconds.count() / scans.Size() << " ms average per scan." << endl;
 			cout << scans.XCorrTime() << " ms spent on FastXCorr." << endl;
 			cout << (double)scans.XCorrTime()/scans.Size() << " ms average per scan on FastXCorr." << endl;
+			scans.ResetTimer();
 
 			//Calculate the approximate memory useage. Note that the precursor sizes are not fully calculated
 			long long bytes = 0;
 			for (size_t a = 0;a < scans.Size();a++) {
-				bytes += scans[a].Capacity() * sizeof(FIPeak);
+				bytes += scans[a].Capacity() * sizeof(FIPeak) + scans[a].precursor.size()*sizeof(FIPrecursor);
 			}
 			cout << "Scan count: " << scans.Size() << " consuming " << (double)bytes / 1073741824 << " Gb." << endl;
 		}

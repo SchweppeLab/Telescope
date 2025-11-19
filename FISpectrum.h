@@ -71,34 +71,11 @@ typedef struct FIPrecursor {
 /// </summary>
 class FISpectrum {
 public:
-	FIPeak& operator[](const size_t& index);
+	FISpectrum();
+	FISpectrum(const FISpectrum& s);
+	~FISpectrum();
 
-	void AddPeak(const size_t& fIndex, const float& value);
-	void AddPeak(const FIPeak& peak);
-	size_t Capacity();
-	std::vector<FIPeak>& GetPeaks();
-	void Reserve(const size_t& sz);
-	size_t Size();
-	void SortMz();
-
-	std::vector<FIPrecursor> precursor;
-	int scanNumber = 0;
-
-protected:
-private:
-
-	std::vector<FIPeak> peaks;  //Should be no higher than highBin to save memory...
-
-	static bool sortMzLH(const FIPeak& a, const FIPeak& b);
-};
-
-class FISpectrum2 {
-public:
-	FISpectrum2();
-	FISpectrum2(const FISpectrum2& s);
-	~FISpectrum2();
-
-	FISpectrum2& operator=(const FISpectrum2& s);
+	FISpectrum& operator=(const FISpectrum& s);
 	FIPeak& operator[](const size_t& index);
 
 	void AddPeak(const size_t& fIndex, const double& mz, const float& value);

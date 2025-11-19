@@ -3,88 +3,16 @@
 using namespace std;
 
 /// <summary>
-/// Array subscript operator to retrieve a spectrum peak
+/// Default constructor
 /// </summary>
-/// <param name="index"></param>
-/// <returns></returns>
-FIPeak& FISpectrum::operator[](const size_t& index) {
-	return peaks[index];
+FISpectrum::FISpectrum() {
 }
 
 /// <summary>
-/// Adds a peak to the spectrum
+/// Copy constructor
 /// </summary>
-/// <param name="fIndex"></param>
-/// <param name="value"></param>
-void FISpectrum::AddPeak(const size_t& fIndex, const float& value) {
-	peaks.emplace_back();
-	peaks.back().fIndex = fIndex;
-	peaks.back().value = value;
-}
-
-/// <summary>
-/// Adds a peak to the spectrum
-/// </summary>
-/// <param name="peak"></param>
-void FISpectrum::AddPeak(const FIPeak& peak) {
-	peaks.push_back(peak);
-}
-
-/// <summary>
-/// The current peak vector capacity of the spectrum
-/// </summary>
-/// <returns></returns>
-size_t FISpectrum::Capacity() {
-	return peaks.capacity();
-}
-
-/// <summary>
-/// The reference to the vector of spectrum peaks
-/// </summary>
-/// <returns></returns>
-vector<FIPeak>& FISpectrum::GetPeaks() {
-	return peaks;
-}
-
-/// <summary>
-/// Preallocates the number of peaks in the spectrum
-/// </summary>
-/// <param name="sz"></param>
-void FISpectrum::Reserve(const size_t& sz) {
-	peaks.reserve(sz);
-}
-
-/// <summary>
-/// The number of peaks in the spectrum
-/// </summary>
-/// <returns></returns>
-size_t FISpectrum::Size() {
-	return peaks.size();
-}
-
-/// <summary>
-/// Sorts the spectrum by m/z values (low to high)
-/// </summary>
-void FISpectrum::SortMz() {
-	sort(peaks.begin(), peaks.end(), sortMzLH);
-}
-
-/// <summary>
-/// Comparison function for sorting spectra peaks by m/z from low to high
-/// </summary>
-/// <param name="a"></param>
-/// <param name="b"></param>
-/// <returns></returns>
-bool FISpectrum::sortMzLH(const FIPeak& a, const FIPeak& b) {
-	return a.mz < b.mz;
-}
-
-
-
-FISpectrum2::FISpectrum2() {
-}
-
-FISpectrum2::FISpectrum2(const FISpectrum2& s) {
+/// <param name="s"></param>
+FISpectrum::FISpectrum(const FISpectrum& s) {
 	curSz = s.curSz;
 	maxSz = s.maxSz;
 	precursor = s.precursor;
@@ -96,11 +24,19 @@ FISpectrum2::FISpectrum2(const FISpectrum2& s) {
 	}
 }
 
-FISpectrum2::~FISpectrum2() {
+/// <summary>
+/// Destructor
+/// </summary>
+FISpectrum::~FISpectrum() {
 	Deallocate();
 }
 
-FISpectrum2& FISpectrum2::operator=(const FISpectrum2& s) {
+/// <summary>
+/// Copy operator
+/// </summary>
+/// <param name="s"></param>
+/// <returns></returns>
+FISpectrum& FISpectrum::operator=(const FISpectrum& s) {
 	if (this != &s) {
 		curSz = s.curSz;
 		maxSz = s.maxSz;
@@ -119,13 +55,12 @@ FISpectrum2& FISpectrum2::operator=(const FISpectrum2& s) {
 	return *this;
 }
 
-
 /// <summary>
 /// Array subscript operator to retrieve a spectrum peak
 /// </summary>
 /// <param name="index"></param>
 /// <returns></returns>
-FIPeak& FISpectrum2::operator[](const size_t& index) {
+FIPeak& FISpectrum::operator[](const size_t& index) {
 	return peaks[index];
 }
 
@@ -134,7 +69,7 @@ FIPeak& FISpectrum2::operator[](const size_t& index) {
 /// </summary>
 /// <param name="fIndex"></param>
 /// <param name="value"></param>
-void FISpectrum2::AddPeak(const size_t& fIndex, const double& mz, const float& value) {
+void FISpectrum::AddPeak(const size_t& fIndex, const double& mz, const float& value) {
 	peaks[curSz].fIndex = fIndex;
 	peaks[curSz].value = value;
 	peaks[curSz++].mz = mz;
@@ -144,7 +79,7 @@ void FISpectrum2::AddPeak(const size_t& fIndex, const double& mz, const float& v
 /// Adds a peak to the spectrum
 /// </summary>
 /// <param name="peak"></param>
-void FISpectrum2::AddPeak(const FIPeak& peak) {
+void FISpectrum::AddPeak(const FIPeak& peak) {
 	peaks[curSz++] = peak;
 }
 
@@ -152,7 +87,7 @@ void FISpectrum2::AddPeak(const FIPeak& peak) {
 /// Allocates the number of peaks in the spectrum
 /// </summary>
 /// <param name="sz"></param>
-bool FISpectrum2::Allocate(const size_t& sz) {
+bool FISpectrum::Allocate(const size_t& sz) {
 	Deallocate();
 	maxSz = sz;
 	peaks = new FIPeak[maxSz]();
@@ -163,11 +98,14 @@ bool FISpectrum2::Allocate(const size_t& sz) {
 /// The current peak vector capacity of the spectrum
 /// </summary>
 /// <returns></returns>
-size_t FISpectrum2::Capacity() {
+size_t FISpectrum::Capacity() {
 	return maxSz;
 }
 
-void FISpectrum2::Clear() {
+/// <summary>
+/// Clears array. Actually, just resets the iterator position and size to 0.
+/// </summary>
+void FISpectrum::Clear() {
 	curSz = 0;
 }
 
@@ -175,7 +113,7 @@ void FISpectrum2::Clear() {
 /// Deallocates the peak memory of the spectrum
 /// </summary>
 /// <param name="sz"></param>
-void FISpectrum2::Deallocate() {
+void FISpectrum::Deallocate() {
 	if (peaks) {
 		delete[] peaks;
 		peaks = nullptr;
@@ -185,25 +123,17 @@ void FISpectrum2::Deallocate() {
 }
 
 /// <summary>
-/// The reference to the vector of spectrum peaks
-/// </summary>
-/// <returns></returns>
-//FIPeak* FISpectrum2::GetPeaks() {
-//	return peaks;
-//}
-
-/// <summary>
 /// The number of peaks in the spectrum
 /// </summary>
 /// <returns></returns>
-size_t FISpectrum2::Size() {
+size_t FISpectrum::Size() {
 	return curSz;
 }
 
 /// <summary>
 /// Sorts the spectrum by m/z values (low to high)
 /// </summary>
-void FISpectrum2::SortMz() {
+void FISpectrum::SortMz() {
 	sort(peaks, peaks+curSz, sortMzLH);
 }
 
@@ -213,6 +143,6 @@ void FISpectrum2::SortMz() {
 /// <param name="a"></param>
 /// <param name="b"></param>
 /// <returns></returns>
-bool FISpectrum2::sortMzLH(const FIPeak& a, const FIPeak& b) {
+bool FISpectrum::sortMzLH(const FIPeak& a, const FIPeak& b) {
 	return a.mz < b.mz;
 }

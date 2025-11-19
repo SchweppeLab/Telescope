@@ -64,22 +64,22 @@ bool FastXCorr::Initialize(ParamsManager* p) {
 /// </summary>
 /// <param name="spec">FISpectrum object to be processed</param>
 /// <returns>true upon success</returns>
-bool FastXCorr::ProcessSpectrum(FISpectrum2& spec) {
-	std::chrono::steady_clock::time_point start_time = chrono::high_resolution_clock::now();
+bool FastXCorr::ProcessSpectrum(FISpectrum& spec) {
 	double m = spec.precursor[0].mass + PROTON + 50; //M+H to match comet
-	XCorr(spec, m);
-	std::chrono::steady_clock::time_point end_time = std::chrono::high_resolution_clock::now();
-	std::chrono::nanoseconds duration_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
-	nanoseconds += duration_nanoseconds.count();
+	if(params->ultraxcorr) UltraXCorr(spec, m);
+	else XCorr(spec, m);
 	return true;
 }
 
-size_t FastXCorr::ReportTime() {
-	return nanoseconds/1000;
-}
-
-void FastXCorr::ResetTime() {
-	nanoseconds = 0;
+/// <summary>
+/// Processes a spectrum using an approximation of the Xcorr computation.
+/// </summary>
+/// <param name="spec">FISpectrum object to be processed</param>
+/// <returns>true upon success</returns>
+bool FastXCorr::ProcessSpectrumFast(FISpectrum& spec) {
+	double m = spec.precursor[0].mass + PROTON + 50; //M+H to match comet
+	UltraXCorr(spec, m);
+	return true;
 }
 
 /// <summary>
@@ -88,7 +88,7 @@ void FastXCorr::ResetTime() {
 /// </summary>
 /// <param name="spec">vector of FIPeak spectral data points</param>
 /// <param name="max">the maximum mass used for normalization</param>
-void FastXCorr::XCorr(FISpectrum2& spec, double& max) {
+void FastXCorr::XCorr(FISpectrum& spec, double& max) {
 	size_t i;
 	double dSum;
 
@@ -139,8 +139,212 @@ void FastXCorr::XCorr(FISpectrum2& spec, double& max) {
 		pk.fIndex = sparseIndex[i];
 		pk.value = pfFastXcorrData[sparseIndex[i]];
 		spec.AddPeak(pk);
+		//cout << pk.fIndex << "\t" << pk.value << "\t" << pdTmpFastXcorrData[sparseIndex[i]] << "\t" << pdCorrelationData[sparseIndex[i]] << endl;
 	}
 	
+
+}
+
+/// <summary>
+/// A fast approximation of the original Xcorr transformation.
+/// </summary>
+/// <param name="spec">vector of FIPeak spectral data points</param>
+/// <param name="max">the maximum mass used for normalization</param>
+void FastXCorr::UltraXCorr(FISpectrum& spec, double& max) {
+	size_t i;
+
+	iHighestIon = 0;
+	dHighestIntensity = 0;
+
+	double dIntensity;
+	iMax = (int)spec[spec.Size() - 1].fIndex;
+	if (iMax > maxBin)iMax = maxBin;
+
+	memset(pdCorrelationData, 0, (iMax + 75) * sizeof(double));
+
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].fIndex > maxBin - 1) break;
+		pdCorrelationData[spec[i].fIndex] = 0;
+	}
+
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].mz > max) break;
+		size_t iBinIon = spec[i].fIndex;
+		if (iBinIon > maxBin - 1) break;
+
+		dIntensity = spec[i].value;
+		//if (iBinIon > 149583) cout << "WTF: " << iBinIon << "\t" << spec[i].mz << "\t" << max << endl;
+		if (dIntensity > 0.0) {
+			dIntensity = sqrt(dIntensity);
+			iHighestIon = (int)iBinIon;
+			if (dIntensity > pdCorrelationData[iBinIon]) {
+				pdCorrelationData[iBinIon] = dIntensity;
+				if (pdCorrelationData[iBinIon] > dHighestIntensity) dHighestIntensity = pdCorrelationData[iBinIon];
+			}
+
+		}
+	}
+	iMax = iHighestIon + 75;
+	//cout << iMax << "\t" << iHighestIon << "\t" << iHighestIon/10 << endl;
+
+	//cout << pdCorrelationData[6904] << endl;
+
+	int  iNumWindows = 10;
+	int  iWindowSize = (int)((double)(iHighestIon) / iNumWindows) + 1;
+	//cout << iWindowSize << endl;
+	double dMaxWindowInten[10];
+	double dMaxOverallInten;
+	double dTmp1;
+	double dTmp2;
+
+	memset(&dMaxWindowInten, 0, 10 * sizeof(double));
+	dMaxOverallInten = 0.0;
+	dTmp1 = 1.0;
+	if (dHighestIntensity > 0.000001) dTmp1 = 100.0 / dHighestIntensity;
+
+	int x = 0;
+	size_t lastIon = 0;
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].mz > max) break;
+		size_t iBinIon = spec[i].fIndex;
+		if (iBinIon > iMax - 1) break;
+		if (iBinIon == lastIon) continue;
+		else lastIon = iBinIon;
+		//cout << iBinIon << "\t" << spec[i].value << endl;
+
+		while (x<iNumWindows && iBinIon >= iWindowSize * (x + 1)) x++;
+
+		dTmp2 = pdCorrelationData[iBinIon] * dTmp1;
+		pdTempRawData[iBinIon] = dTmp2;
+		pdCorrelationData[iBinIon] = 0;
+		if (x < iNumWindows) {
+			if (dMaxWindowInten[x] < dTmp2) dMaxWindowInten[x] = dTmp2;
+		}
+	}
+
+	double scale = 50.0;
+	dMaxOverallInten = 100;
+	dTmp2 = 0.05 * dMaxOverallInten;
+	dTmp1 = scale / dMaxWindowInten[0];
+	x = 0;
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].mz > max) break;
+		size_t iBinIon = spec[i].fIndex;
+		if (iBinIon > iMax - 1) break;
+
+		while (x < iNumWindows-1 && iBinIon >= iWindowSize * (x + 1)) {
+			x++;
+			dTmp1 = scale / dMaxWindowInten[x];
+			//cout << x << "\t" << iBinIon << "\t" << dTmp1 << endl;
+		}
+
+		if (pdTempRawData[iBinIon] > dTmp2) pdCorrelationData[iBinIon] = (pdTempRawData[iBinIon] * dTmp1);
+	}
+
+	size_t count = 0;
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].mz > max) break;
+		size_t iBinIon = spec[i].fIndex;
+		if (iBinIon > maxBin - 1) break;
+
+		// Make fast xcorr spectrum.
+		size_t start, stop;
+		if (iBinIon > 75) start = iBinIon - 76;
+		else start = 0;
+		stop = iBinIon + 76;
+		while (i < spec.Size() - 1 && spec[i + 1].fIndex-76 <= stop) {
+			i++;
+			stop = spec[i].fIndex+76;
+		}
+		if (stop > iMax) stop = iMax;
+		//cout << start << "\t" << stop  << endl;
+
+		double dSum = 0.0;
+		for (size_t a = start; a < start + 75; a++) dSum += pdCorrelationData[a];
+		for (size_t a = start + 75; a < stop+76; a++) {
+			if (a < stop && pdCorrelationData[a]>0) dSum += pdCorrelationData[a];
+			if (a >= start + 151 && pdCorrelationData[a - 151] > 0) dSum -= pdCorrelationData[a - 151];
+			pdTmpFastXcorrData[a - 75] = (dSum - pdCorrelationData[a - 75]) * 0.0066666667;
+			//if (spec.scanNumber == 38289) cout << a - 75 << "\t" << pdTmpFastXcorrData[a - 75] << "\t" << dSum << endl;
+		}
+
+		double dTmp0 = pdCorrelationData[start] - pdTmpFastXcorrData[start];
+		double dTmp1 = pdCorrelationData[start + 1] - pdTmpFastXcorrData[start + 1];
+		double dTmp2 = pdCorrelationData[start + 2] - pdTmpFastXcorrData[start + 2];
+		pfFastXcorrData[start] = (float)(dTmp0 + dTmp1 * 0.5);
+		pfFastXcorrData[start + 1] = (float)(dTmp1 + (dTmp0 + dTmp2) * 0.5);
+		if (pfFastXcorrData[start] > params->minPeak || pfFastXcorrData[start] < -params->minPeak) sparseIndex[count++] = start;
+		if (pfFastXcorrData[start + 1] > params->minPeak || pfFastXcorrData[start + 1] < -params->minPeak) sparseIndex[count++] = start+1;
+		for (size_t a = start + 2;a < stop;a++) {
+			dTmp0 = dTmp1;
+			dTmp1 = dTmp2;
+			dTmp2 = pdCorrelationData[a + 1] - pdTmpFastXcorrData[a + 1];
+			pfFastXcorrData[a] = (float)(dTmp1 + (dTmp0 + dTmp2) * 0.5);
+			if (pfFastXcorrData[a] > params->minPeak || pfFastXcorrData[a] < -params->minPeak) sparseIndex[count++] = a;
+		}
+		pfFastXcorrData[stop] = (float)(dTmp2 + dTmp1 * 0.5);
+		if (pfFastXcorrData[stop] > params->minPeak || pfFastXcorrData[stop] < -params->minPeak) sparseIndex[count++] = stop;
+
+	}
+
+	/*To fix later
+	for (size_t i = 0;i < spec.Size();i++) {
+		if (spec[i].mz > max) break;
+		size_t iBinIon = spec[i].fIndex;
+		if (iBinIon > iMax - 1) break;
+
+		//cout << iBinIon << "\t" << pdCorrelationData[iBinIon];
+		double dSum = pdCorrelationData[iBinIon];
+		if (i > 0) {
+			int a = (int)i - 1;
+			while (a > -1) {
+				if (spec[a].fIndex > (iBinIon - 75)) dSum += pdCorrelationData[spec[a--].fIndex];
+				else break;
+			}
+		}
+		if (i < spec.Size()) {
+			int a = (int)i + 1;
+			while (a < spec.Size() && max>spec[a].mz) {
+				if (spec[a].fIndex < (iBinIon + 75)) dSum += pdCorrelationData[spec[a++].fIndex];
+				else break;
+			}
+		}
+		//cout << "\t" << dSum;
+		if (dSum > pdCorrelationData[iBinIon]) {
+
+		//TODO: Check whether next peak is close enough to influence value?
+			pdTmpFastXcorrData[iBinIon] = dSum * 0.0066666667 + (dSum - pdCorrelationData[iBinIon]) * 0.0066666667;
+			pfFastXcorrData[iBinIon] = pdCorrelationData[iBinIon] - pdTmpFastXcorrData[iBinIon];
+			pfFastXcorrData[iBinIon - 1] = pfFastXcorrData[iBinIon] * 0.5 - dSum * 0.0066666667;
+			pfFastXcorrData[iBinIon + 1] = pfFastXcorrData[iBinIon] * 0.5 - dSum * 0.0066666667;
+		} else {
+			pdTmpFastXcorrData[iBinIon] = dSum * 0.0066666667; //(dSum - pdCorrelationData[iBinIon]) * 0.0066666667;
+			pfFastXcorrData[iBinIon] = pdCorrelationData[iBinIon] - pdTmpFastXcorrData[iBinIon];
+			pfFastXcorrData[iBinIon - 1] = pfFastXcorrData[iBinIon] * 0.5 - pdTmpFastXcorrData[iBinIon];
+			pfFastXcorrData[iBinIon + 1] = pfFastXcorrData[iBinIon] * 0.5 - pdTmpFastXcorrData[iBinIon];
+		}
+		//cout << "\t" << pdTmpFastXcorrData[iBinIon] << endl;
+
+		//pfFastXcorrData[iBinIon] = pdCorrelationData[iBinIon] - pdTmpFastXcorrData[iBinIon];
+		//pfFastXcorrData[iBinIon - 1] = pfFastXcorrData[iBinIon] * 0.5-pdTmpFastXcorrData[iBinIon];
+		//pfFastXcorrData[iBinIon + 1] = pfFastXcorrData[iBinIon] * 0.5 - pdTmpFastXcorrData[iBinIon];
+		sparseIndex[count++] = iBinIon - 1;
+		sparseIndex[count++] = iBinIon;
+		sparseIndex[count++] = iBinIon + 1;
+
+	}
+	*/
+
+	//MH: Fill sparse matrix
+	spec.Allocate(count);
+	for (i = 0;i < count;i++) {
+		FIPeak pk;
+		pk.fIndex = sparseIndex[i];
+		pk.value = pfFastXcorrData[sparseIndex[i]];
+		spec.AddPeak(pk);
+		//if(spec.scanNumber==38289) cout << pk.fIndex << "\t" << pk.value << "\t" << pdTmpFastXcorrData[sparseIndex[i]] << "\t" << pdCorrelationData[sparseIndex[i]] << endl;
+	}
+	//if (spec.scanNumber == 38289) exit(1);
 
 }
 
@@ -149,7 +353,7 @@ void FastXCorr::XCorr(FISpectrum2& spec, double& max) {
 /// </summary>
 /// <param name="spec">vector of FIPeak spectral data points</param>
 /// <param name="max">the maximum mass used for normalization</param>
-void FastXCorr::BinIons(FISpectrum2& spec, double& max) {
+void FastXCorr::BinIons(FISpectrum& spec, double& max) {
 	double dIntensity;
 
 	iMax = (int)spec[spec.Size() - 1].fIndex;
@@ -196,6 +400,7 @@ void FastXCorr::MakeCorrData(double scale) {
 	int  iBin;
 	int  iNumWindows = 10;
 	int  iWindowSize = (int)((double)(iHighestIon) / iNumWindows)+1;
+	//cout << iWindowSize << endl;
 	double dMaxWindowInten[10];
 	double dMaxOverallInten;
 	double dTmp1;
@@ -210,6 +415,7 @@ void FastXCorr::MakeCorrData(double scale) {
 	int x = 0;
 	int c = 0;
 	for (i = 0; i < iMax; i++) {
+		//if (i == 6904) cout << pdCorrelationData[i] << "\t" << dTmp1 << endl;
 		dTmp2 = pdCorrelationData[i] * dTmp1;
 		pdTempRawData[i] = dTmp2;
 		pdCorrelationData[i] = 0;
@@ -229,12 +435,15 @@ void FastXCorr::MakeCorrData(double scale) {
 	for (i = 0; i < iNumWindows; i++) {
 		if (dMaxWindowInten[i] > 0.0) {
 			dTmp1 = scale / dMaxWindowInten[i];
+			//cout << "dT1: " << i << "\t" << dTmp1 << "\t" << iNumWindows << endl;
 
 			for (ii = 0; ii < iWindowSize; ii++) {    // Normalize to max inten. in window.      
 				iBin = i * iWindowSize + ii;
+				//if (iBin == 6904) cout << pdTempRawData[iBin] << endl;
 				if (iBin < iMax) {
 					if (pdTempRawData[iBin] > dTmp2) pdCorrelationData[iBin] = (pdTempRawData[iBin] * dTmp1);
 				}
+				//if (iBin == 6904) cout << pdCorrelationData[iBin] << endl;
 			}
 		}
 	}

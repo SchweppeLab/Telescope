@@ -73,7 +73,7 @@ public:
 
 	void Initialize(DBManager* d, ParamsManager* p);
 	void PopulateIndex(unsigned int start, unsigned int stop, unsigned int* arr, FIMask& fim);
-	bool ScoreSpectrum(FISpectrum2& scan, double* scores);
+	bool ScoreSpectrum(FISpectrum& scan, double* scores);
 	//void SetBinSize(double bs); //TODO: Get rid of this, and use the params object
 	size_t SizePeptide();
 	void SortPeptides();

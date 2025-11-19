@@ -362,7 +362,7 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 /// <param name="scan">The FISpectrum object data to be scored</param>
 /// <param name="scores">A block of memory sufficient to hold all the PSM scores</param>
 /// <returns>true upon success</returns>
-bool FragmentIonIndex::ScoreSpectrum(FISpectrum2& scan, double* scores) {
+bool FragmentIonIndex::ScoreSpectrum(FISpectrum& scan, double* scores) {
 
 	//Iterate over each precursor associated with this scan. Note that having multiple precursors
 	//is useful for either:
@@ -370,6 +370,9 @@ bool FragmentIonIndex::ScoreSpectrum(FISpectrum2& scan, double* scores) {
 	//  2. Identifying multiple PSMs from the same spectrum, provided they have unique precursor masses.
 	for (size_t p = 0;p < scan.precursor.size();p++) { 
 		if (scan.precursor[p].scoreCount == 0) continue;
+
+		//TODO: expand the search space, if needed, if e-values were requested in the score.
+		//Additional search space should be the next peptidoforms past the mass boundaries...
 		
 		//Zero out memory from score array. It is only necessary to reset the amount of memory
 		//this precursor will use.
@@ -424,8 +427,10 @@ bool FragmentIonIndex::ScoreSpectrum(FISpectrum2& scan, double* scores) {
 			double fsc= round(scores[a]*5) / 1000.0;
 
 			//Only keep scores above zero. Let the TopScore object do the sorting
-			if (fsc > 0) scan.precursor[p].ts.CheckScore(fsc, a + pLowIndex);
+			if (fsc > 0) scan.precursor[p].ts.CheckScore(fsc, a + pLowIndex, params->expect);
 		}
+		if (params->expect) scan.precursor[p].ts.CalcEValue();
+
 	}
 	
 	return true;

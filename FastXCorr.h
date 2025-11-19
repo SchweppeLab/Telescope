@@ -18,10 +18,8 @@ public:
 	~FastXCorr();
 
 	bool Initialize(ParamsManager* p);
-	bool ProcessSpectrum(FISpectrum2& spec);
-
-	size_t ReportTime();
-	void ResetTime();
+	bool ProcessSpectrum(FISpectrum& spec);
+	bool ProcessSpectrumFast(FISpectrum& spec);
 
 protected:
 private:
@@ -31,9 +29,11 @@ private:
 	void Deallocate();
 
 	//Adapted from Kojak, originally adapted from Comet
-	void XCorr(FISpectrum2& spec, double& max);
-	void BinIons(FISpectrum2& spec, double& max);
+	void XCorr(FISpectrum& spec, double& max);
+	void BinIons(FISpectrum& spec, double& max);
 	void MakeCorrData(double scale);
+
+	void UltraXCorr(FISpectrum& spec, double& max);
 
 	ParamsManager* params = nullptr;
 	size_t maxBin = 0;
@@ -44,11 +44,9 @@ private:
 	size_t* sparseIndex = nullptr;
 
 	int iHighestIon = 0;
-	int iMax = 0;
+	size_t iMax = 0;
 	double dHighestIntensity = 0;
 	double* pdCorrelationData = nullptr;
-
-	size_t nanoseconds=0;
 
 };
 

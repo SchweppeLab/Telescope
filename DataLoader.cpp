@@ -31,7 +31,7 @@ DataLoader::~DataLoader() {
 /// </summary>
 /// <param name="index">position of the scan in the scans array</param>
 /// <returns>FISpectrum scan object</returns>
-FISpectrum2& DataLoader::operator[](const size_t& index) {
+FISpectrum& DataLoader::operator[](const size_t& index) {
 	return scans[index];
 }
 
@@ -78,7 +78,7 @@ bool DataLoader::Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p)
 /// </summary>
 /// <param name="s"></param>
 /// <param name="tIndex"></param>
-void DataLoader::ProcessSpectrum(FISpectrum2& s, int tIndex) {
+void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
 	xcorr[tIndex].ProcessSpectrum(s);
 }
 
@@ -187,6 +187,8 @@ bool DataLoader::ReadSpectra(const string& fn) {
 
 	//Only process spectra if the params instruct to do so. It is done with multiple threads for speed.
 	if (params->xcorr) {
+		std::chrono::steady_clock::time_point start_time = chrono::high_resolution_clock::now();
+
 		ThreadPool<sSpectrumStruct*>* spectraPool = new ThreadPool<sSpectrumStruct*>(ProcessSpectrumProc, (int)threads, (int)threads, 1);
 		for (size_t a = 0;a < scans.size();a++) {
 			spectraPool->WaitForQueuedParams();
@@ -196,9 +198,16 @@ bool DataLoader::ReadSpectra(const string& fn) {
 		spectraPool->WaitForQueuedParams();
 		spectraPool->WaitForThreads();
 		delete spectraPool;
+		std::chrono::steady_clock::time_point end_time = std::chrono::high_resolution_clock::now();
+		std::chrono::milliseconds duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+		milliseconds += duration_milliseconds.count();
 	}
 
 	return true;
+}
+
+void DataLoader::ResetTimer() {
+	milliseconds = 0;
 }
 
 /// <summary>
@@ -210,9 +219,5 @@ size_t DataLoader::Size() {
 }
 
 size_t DataLoader::XCorrTime() {
-	size_t ms = 0;
-	for (size_t a = 0;a < threads;a++) {
-		ms += xcorr[a].ReportTime();
-	}
-	return ms/1000;
+	return milliseconds;
 }

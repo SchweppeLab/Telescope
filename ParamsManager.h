@@ -34,6 +34,7 @@ public:
 	double minPeak = 2; //1e-6   //magnitude (absolute) threshold following Xcorr transformation
 	int maxFragZ = 3;						 //maximum possible charge state of fragment ions
 	bool xcorr = true;           //perform Xcorr transformation
+	bool ultraxcorr = false;
 
 	//Database Parsing Parameters
 	int maxMC = 2;  //maximum number of enzyme missed cleavages allowed
@@ -49,6 +50,7 @@ public:
 	double ppm = 20.0;    //+/- PPM mass tolerance (symmetrical) for spectrum precursor
 	int psmCount = 5;     //maximum number of PSMs to export to PepXML
 	int threads = 18;     //maximum number of concurrent processing threads
+	bool expect = false;  //perform e-value estimation on top scores. Note, this can increase search space to generate enough PSMs per spectrum.
 
 protected:
 private:

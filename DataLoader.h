@@ -16,8 +16,8 @@
 struct sSpectrumStruct {
 	Mutex* mutex = nullptr;
 	bool* thread = nullptr;
-	FISpectrum2* scan = nullptr;
-	sSpectrumStruct(FISpectrum2* s) {
+	FISpectrum* scan = nullptr;
+	sSpectrumStruct(FISpectrum* s) {
 		scan = s;
 	}
 	~sSpectrumStruct() {
@@ -45,10 +45,11 @@ public:
 	DataLoader();
 	~DataLoader();
 
-	FISpectrum2& operator[](const size_t& index);
+	FISpectrum& operator[](const size_t& index);
 
 	bool Initialize(DBManager* d, FragmentIonIndex* f, ParamsManager* p);
 	bool ReadSpectra(const std::string& fn);
+	void ResetTimer();
 	size_t Size();
 	size_t XCorrTime();
 
@@ -62,19 +63,21 @@ private:
 
 	void Allocate();
 	void Deallocate();
-	static void ProcessSpectrum(FISpectrum2& s, int tIndex);
+	static void ProcessSpectrum(FISpectrum& s, int tIndex);
 	static void ProcessSpectrumProc(sSpectrumStruct* s);
 
 	DBManager* dbm = nullptr;
 	FragmentIonIndex* fii = nullptr;
 	ParamsManager* params = nullptr;
-	std::vector<FISpectrum2> scans;
+	std::vector<FISpectrum> scans;
 
 	//array of xcorr transformers, one per thread
 	static FastXCorr* xcorr; 
 	static Mutex mutexThreads;
 	static bool* activeThread;
 	static size_t threads;
+
+	size_t milliseconds = 0;
 };
 
 
