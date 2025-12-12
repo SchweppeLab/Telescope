@@ -21,9 +21,9 @@ struct sSpectrumStruct {
 		scan = s;
 	}
 	~sSpectrumStruct() {
-		Threading::LockMutex(*mutex);
+		ThreadingT::LockMutex(*mutex);
 		*thread = false;
-		Threading::UnlockMutex(*mutex);
+		ThreadingT::UnlockMutex(*mutex);
 		scan = NULL;
 		thread = NULL;
 		mutex = NULL;
@@ -57,6 +57,7 @@ public:
 	//that will be scored against any one spectrum. It is used to buffer a score array
 	//that will then have sufficient memory to be used with any spectrum.
 	size_t maxScoreCount = 0;
+	std::vector<FISpectrum> scans;
 
 protected:
 private:
@@ -69,7 +70,6 @@ private:
 	DBManager* dbm = nullptr;
 	FragmentIonIndex* fii = nullptr;
 	ParamsManager* params = nullptr;
-	std::vector<FISpectrum> scans;
 
 	//array of xcorr transformers, one per thread
 	static FastXCorr* xcorr; 

@@ -444,6 +444,15 @@ string DBManager::GetProteinName(const size_t& index) {
 }
 
 /// <summary>
+/// Returns the protein identifier
+/// </summary>
+/// <param name="index"></param>
+/// <returns></returns>
+string DBManager::GetProteinNameFromPeptideIndex(const size_t & index) {
+	return db[peptides[index].instances[0].dbIndex].name;
+}
+
+/// <summary>
 /// Returns the protein amino acid sequence
 /// </summary>
 /// <param name="index"></param>

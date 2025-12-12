@@ -32,7 +32,7 @@ void FIManager::Allocate() {
 	Deallocate();
 	threads = params->threads;
 	activeThread = new bool[threads]();
-	Threading::CreateMutex(&mutexThreads);
+	ThreadingT::CreateMutex(&mutexThreads);
 }
 
 /// <summary>
@@ -70,7 +70,7 @@ void FIManager::Deallocate() {
 	//if (fii) delete fii;
 	if (activeThread) {
 		delete[] activeThread;
-		Threading::DestroyMutex(mutexThreads);
+		ThreadingT::DestroyMutex(mutexThreads);
 	}
 }
 
@@ -223,10 +223,10 @@ bool FIManager::ScoreSpectrum(vector<FISpectrum>& scans) {
 /// </summary>
 /// <param name="scans">DataLoader object</param>
 /// <returns>true if successful</returns>
-bool FIManager::ScoreSpectrum(DataLoader& scans) {
+bool FIManager::ScoreSpectrum(FISpectrum* scans, const size_t& count) {
 
 	ThreadPool<sSearchStruct*>* searchPool = new ThreadPool<sSearchStruct*>(ScoreSpectrumProcess, (int)threads, (int)threads, 1);
-	for (size_t b = 0;b < scans.Size();b++) {
+	for (size_t b = 0;b < count;b++) {
 		if (b % 10000 == 0) cout << ".";
 		searchPool->WaitForQueuedParams();
 		sSearchStruct* s = new sSearchStruct(&fii, &scans[b]);
@@ -246,14 +246,14 @@ bool FIManager::ScoreSpectrum(DataLoader& scans) {
 void FIManager::ScoreSpectrumProcess(sSearchStruct* s) {
 	//Get next available thread number;
 	size_t i;
-	Threading::LockMutex(mutexThreads);
+	ThreadingT::LockMutex(mutexThreads);
 	for (i = 0;i < threads;i++) {
 		if (!activeThread[i]) {
 			activeThread[i] = true;
 			break;
 		}
 	}
-	Threading::UnlockMutex(mutexThreads);
+	ThreadingT::UnlockMutex(mutexThreads);
 
 	s->mutex = &mutexThreads;
 	s->thread = &activeThread[i];

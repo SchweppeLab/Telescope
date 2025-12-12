@@ -1,7 +1,6 @@
 #ifndef _FIMANAGER_H
 #define _FIMANAGER_H
 
-#include "DataLoader.h"
 #include "DBManager.h"
 #include "FIMemoryManager.h"
 #include "FragmentIonIndex.h"
@@ -19,9 +18,9 @@ struct sSearchStruct {
     scan = s;
   }
   ~sSearchStruct() {
-		Threading::LockMutex(*mutex);
+		ThreadingT::LockMutex(*mutex);
 		*thread = false;
-		Threading::UnlockMutex(*mutex);
+		ThreadingT::UnlockMutex(*mutex);
 		fii = NULL;
 		scan = NULL;
 		thread = NULL;
@@ -74,7 +73,7 @@ public:
 	bool GenerateIndex();
 	void Initialize(DBManager* d, ParamsManager* p);
 	bool ScoreSpectrum(std::vector<FISpectrum>& scans);
-	bool ScoreSpectrum(DataLoader& scans);
+	bool ScoreSpectrum(FISpectrum* scans, const size_t& count);
 
 	FragmentIonIndex fii;
 

@@ -252,7 +252,7 @@ bool TelescopeManager::SearchSpectra(bool echo) {
 	//The actual search starts here.
 	if(echo) cout << "Begin search of " << scans.Size() << " scans." << endl;
 	start_time = chrono::high_resolution_clock::now();
-	fim.ScoreSpectrum(scans);
+	fim.ScoreSpectrum(scans.scans);
 	end_time = std::chrono::high_resolution_clock::now();
 	duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
 

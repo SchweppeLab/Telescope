@@ -44,7 +44,7 @@ void DataLoader::Allocate() {
 	xcorr = new FastXCorr[threads]();
 	for (size_t a = 0;a < threads;a++) xcorr[a].Initialize(params);
 	activeThread = new bool[threads]();
-	Threading::CreateMutex(&mutexThreads);
+	ThreadingT::CreateMutex(&mutexThreads);
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ void DataLoader::Deallocate() {
 	if (xcorr) delete[] xcorr;
 	if (activeThread) {
 		delete[] activeThread;
-		Threading::DestroyMutex(mutexThreads);
+		ThreadingT::DestroyMutex(mutexThreads);
 	}
 }
 
@@ -89,14 +89,14 @@ void DataLoader::ProcessSpectrum(FISpectrum& s, int tIndex) {
 void DataLoader::ProcessSpectrumProc(sSpectrumStruct* s) {
 	//Get next available thread number;
 	int i;
-	Threading::LockMutex(mutexThreads);
+	ThreadingT::LockMutex(mutexThreads);
 	for (i = 0;i < threads;i++) {
 		if (!activeThread[i]) {
 			activeThread[i] = true;
 			break;
 		}
 	}
-	Threading::UnlockMutex(mutexThreads);
+	ThreadingT::UnlockMutex(mutexThreads);
 
 	s->mutex = &mutexThreads;
 	s->thread = &activeThread[i];
@@ -140,7 +140,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			//what to do if charge=0?
 			if (charge == 0) charge = 3;
 			double mass = mz * charge - (charge * PROTON);
-			if (mass+PROTON<params->minPepMass || mass+PROTON>params->maxPepMass) goto NEXTSCAN; //M+H to match Comet...
+			if (mass + PROTON<params->minPepMass || mass + PROTON>params->maxPepMass) goto NEXTSCAN; //M+H to match Comet...
 
 			//The peptide mass tolerance boundaries here replicate how Comet computes them (which is M+H space...)
 			double mzErr = mz / 1e6 * params->ppm;
@@ -163,7 +163,7 @@ bool DataLoader::ReadSpectra(const string& fn) {
 			scans[scanIndex].precursor.push_back(p);
 			scans[scanIndex].precursor.back().ts.Init(params->psmCount);
 			int count = 0;
-			while (fii->peptides[index++].mass < max) count++;
+			while (index<fii->pepArrSz && fii->peptides[index++].mass < max) count++;
 			scans[scanIndex].precursor.back().scoreCount = count;
 			if (count > maxScoreCount) maxScoreCount = count;
 

@@ -1,6 +1,8 @@
 #ifndef _TELESCOPEMANAGER_H
 #define _TELESCOPEMANAGER_H
 
+#define DATALOADER
+
 #include "DataLoader.h"
 #include "DBManager.h"
 #include "FIManager.h"

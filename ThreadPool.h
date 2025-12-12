@@ -60,9 +60,9 @@ public:
       _threadProc = threadProc;
       _maxQueuedParams = maxNumParamsToQueue;
 
-      Threading::CreateMutex(&_poolAccessMutex);
+      ThreadingT::CreateMutex(&_poolAccessMutex);
 
-      Threading::CreateSemaphore(&_queueParamsSemaphore);
+      ThreadingT::CreateSemaphore(&_queueParamsSemaphore);
 
       for (_numCurrThreads=0; _numCurrThreads < _minThreads; _numCurrThreads++)
       {
@@ -77,21 +77,21 @@ public:
          _threads[i]->End();
      }
 
-     Threading::DestroyMutex(_poolAccessMutex);
+     ThreadingT::DestroyMutex(_poolAccessMutex);
 
-     Threading::DestroySemaphore(_queueParamsSemaphore);
+     ThreadingT::DestroySemaphore(_queueParamsSemaphore);
    }
 
    ThreadProc GetThreadProc() { return _threadProc; }
 
    void Launch(T param)
    {
-      Threading::LockMutex(_poolAccessMutex);
+      ThreadingT::LockMutex(_poolAccessMutex);
       if (!_threads.empty())
       {
          ThreadManager<T> *pThreadMgr = _threads.back();
          _threads.pop_back();
-         Threading::UnlockMutex(_poolAccessMutex);
+         ThreadingT::UnlockMutex(_poolAccessMutex);
          pThreadMgr->Wake(param);
          return;
       }
@@ -103,19 +103,19 @@ public:
       }
 
       _params.push_back(param);
-      Threading::UnlockMutex(_poolAccessMutex);
+      ThreadingT::UnlockMutex(_poolAccessMutex);
    }
 
    NextThreadState RejoinPool(ThreadManager<T> *pThreadMgr)
    {
-      Threading::LockMutex(_poolAccessMutex);
+      ThreadingT::LockMutex(_poolAccessMutex);
 
       // Any parameters queued?  If yes, give it to the thread to process.
       if (!_params.empty())
       {
          T param = _params.front();
          _params.pop_front();
-         Threading::UnlockMutex(_poolAccessMutex);
+         ThreadingT::UnlockMutex(_poolAccessMutex);
          pThreadMgr->SetParam(param);
          return ThreadPool<T>::Run;
       }
@@ -125,7 +125,7 @@ public:
       if (_numCurrThreads > _minThreads)
       {
          _numCurrThreads--;
-         Threading::UnlockMutex(_poolAccessMutex);
+         ThreadingT::UnlockMutex(_poolAccessMutex);
          return ThreadPool<T>::Die;
       }
 
@@ -135,13 +135,13 @@ public:
       if (bError)
       {
          _numCurrThreads--;
-         Threading::UnlockMutex(_poolAccessMutex);
+         ThreadingT::UnlockMutex(_poolAccessMutex);
          return ThreadPool<T>::Die;
       }
 
       // No params queued; ask thread to go to sleep & wait mode.
       _threads.push_back(pThreadMgr);
-      Threading::UnlockMutex(_poolAccessMutex);
+      ThreadingT::UnlockMutex(_poolAccessMutex);
       return ThreadPool<T>::Sleep;
    }
 
@@ -160,14 +160,14 @@ public:
          {
             break;
          }
-         Threading::ThreadSleep(ulWaitMilliseconds);
+         ThreadingT::ThreadSleep(ulWaitMilliseconds);
          ulElapsedTimeMilliseconds += ulWaitMilliseconds;
       }
 
       // Now wait for all of them to go to sleep
       while (NumActiveThreads() != 0)
       {
-         Threading::ThreadSleep(100);
+         ThreadingT::ThreadSleep(100);
       }
    }
 
@@ -175,7 +175,7 @@ public:
    {
       if (ShouldCheckQueuedParams() && (NumParamsQueued() > _maxQueuedParams))
       {
-         Threading::WaitSemaphore(_queueParamsSemaphore);
+         ThreadingT::WaitSemaphore(_queueParamsSemaphore);
       }
    }
 
@@ -192,17 +192,17 @@ public:
 
    int NumParamsQueued()
    {
-      Threading::LockMutex(_poolAccessMutex);
+      ThreadingT::LockMutex(_poolAccessMutex);
       int numParamsQueued = (int)_params.size();
-      Threading::UnlockMutex(_poolAccessMutex);
+      ThreadingT::UnlockMutex(_poolAccessMutex);
       return numParamsQueued;
    }
 
    int NumActiveThreads()
    {
-      Threading::LockMutex(_poolAccessMutex);
+      ThreadingT::LockMutex(_poolAccessMutex);
       int numActiveThreads = _numCurrThreads - (int)_threads.size();
-      Threading::UnlockMutex(_poolAccessMutex);
+      ThreadingT::UnlockMutex(_poolAccessMutex);
       return numActiveThreads;
    }
 
@@ -215,7 +215,7 @@ protected:
 
    void QueueMoreParams()
    {
-      Threading::SignalSemaphore(_queueParamsSemaphore);
+      ThreadingT::SignalSemaphore(_queueParamsSemaphore);
    }
 
    ThreadProc                     _threadProc;
@@ -250,11 +250,11 @@ public:
 
       ThreadManager<T>::_pPool = pPool;
 
-      Threading::CreateSemaphore(&_wakeSemaphore);
-      Threading::CreateSemaphore(&_sleepSemaphore);
+      ThreadingT::CreateSemaphore(&_wakeSemaphore);
+      ThreadingT::CreateSemaphore(&_sleepSemaphore);
 
       // Begin the thread that is being managed
-      Threading::BeginThread(
+      ThreadingT::BeginThread(
             reinterpret_cast<ThreadProc>(ThreadManager<T>::ThreadRoutingFunction),
             this,   // Parameter to the thread
             &_threadIdentifier);
@@ -262,8 +262,8 @@ public:
 
    ~ThreadManager()
    {
-      Threading::DestroySemaphore(_wakeSemaphore);
-      Threading::DestroySemaphore(_sleepSemaphore);
+      ThreadingT::DestroySemaphore(_wakeSemaphore);
+      ThreadingT::DestroySemaphore(_sleepSemaphore);
    }
 
    void SetParam(T param) { ThreadManager::_param = param; }
@@ -272,22 +272,22 @@ public:
 
    void Sleep()
    {
-      Threading::SignalSemaphore(_sleepSemaphore);
-      Threading::WaitSemaphore(_wakeSemaphore);
+      ThreadingT::SignalSemaphore(_sleepSemaphore);
+      ThreadingT::WaitSemaphore(_wakeSemaphore);
    }
 
    void Wake(T param)
    {
-      Threading::WaitSemaphore(_sleepSemaphore);
+      ThreadingT::WaitSemaphore(_sleepSemaphore);
       SetParam(param);
-      Threading::SignalSemaphore(_wakeSemaphore);
+      ThreadingT::SignalSemaphore(_wakeSemaphore);
    }
 
    void End()
    {
-      Threading::WaitSemaphore(_sleepSemaphore);
+      ThreadingT::WaitSemaphore(_sleepSemaphore);
       _endThread = true;
-      Threading::SignalSemaphore(_wakeSemaphore);
+      ThreadingT::SignalSemaphore(_wakeSemaphore);
    }
 
    uint32_t Run()
@@ -317,7 +317,7 @@ public:
       }
 
       // The thread exits if the pool won't accept it's rejoin - deleting itself on exit
-      Threading::EndThread();
+      ThreadingT::EndThread();
       delete this;
       return 0;
    }

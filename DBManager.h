@@ -51,6 +51,7 @@ public:
 	std::string GetPeptideSequence(const size_t& index, int maskIndex=-1);
 	char* GetPepSeq(const size_t& index);
 	std::string GetProteinName(const size_t& index);
+	std::string GetProteinNameFromPeptideIndex(const size_t& index);
 	std::string& GetProteinSeq(const size_t& index);
 
 	std::string& ModMask(const int& index);

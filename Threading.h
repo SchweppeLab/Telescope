@@ -27,12 +27,12 @@
 
 #include "OSSpecificThreading.h"
 
-class Threading
+class ThreadingT
 {
 public:
 
-   Threading();
-   ~Threading();
+   ThreadingT();
+   ~ThreadingT();
 
    // Mutex-specific methods
    static bool CreateMutex(Mutex* pMutex);

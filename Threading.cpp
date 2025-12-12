@@ -16,69 +16,69 @@
 
 #include "Threading.h"
 
-ThreadId Threading::_threadId;
+ThreadId ThreadingT::_threadId;
 
 #ifndef _WIN32
 #include <unistd.h>
 
 ///////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to POSIX
+// Implementations for ThreadingT base class specific to POSIX
 ///////////////////////////////////////////////////////////////
 
-Threading::Threading()
+ThreadingT::ThreadingT()
 {
 }
 
-Threading::~Threading()
+ThreadingT::~ThreadingT()
 {
 }
 
 // Posix specific object destructor.
-bool Threading::CreateMutex(Mutex* pMutex)
+bool ThreadingT::CreateMutex(Mutex* pMutex)
 {
    pthread_mutex_init(pMutex, NULL);
    return true;
 }
 
-void Threading::LockMutex(Mutex& mutex)
+void ThreadingT::LockMutex(Mutex& mutex)
 {
    pthread_mutex_lock(&mutex);
 }
 
-void Threading::UnlockMutex(Mutex& mutex)
+void ThreadingT::UnlockMutex(Mutex& mutex)
 {
    pthread_mutex_unlock(&mutex);
 }
 
-void Threading::DestroyMutex(Mutex& mutex)
+void ThreadingT::DestroyMutex(Mutex& mutex)
 {
    pthread_mutex_destroy(&mutex);
 }
 
-void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
+void ThreadingT::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
    _threadId = *pThreadId;
    pthread_create(pThreadId, NULL, pFunction, arg);
 }
 
-void Threading::EndThread()
+void ThreadingT::EndThread()
 {
     pthread_exit((void*)&_threadId);
 }
 
-void Threading::ThreadSleep(unsigned long dwMilliseconds)
+void ThreadingT::ThreadSleep(unsigned long dwMilliseconds)
 {
    usleep(dwMilliseconds);
 }
 
-void Threading::CreateSemaphore(Semaphore* pSem)
+void ThreadingT::CreateSemaphore(Semaphore* pSem)
 {
    pthread_cond_init(&(pSem->condition), NULL);
    pthread_mutex_init(&(pSem->mutex), NULL);
    pSem->conditionSet = false;
 }
 
-void Threading::WaitSemaphore(Semaphore& sem)
+void ThreadingT::WaitSemaphore(Semaphore& sem)
 {
    pthread_mutex_lock(&sem.mutex);
    while (!(sem.conditionSet))
@@ -89,7 +89,7 @@ void Threading::WaitSemaphore(Semaphore& sem)
    pthread_mutex_unlock(&sem.mutex);
 }
 
-void Threading::SignalSemaphore(Semaphore& sem)
+void ThreadingT::SignalSemaphore(Semaphore& sem)
 {
    pthread_mutex_lock(&sem.mutex);
    sem.conditionSet = true;
@@ -97,7 +97,7 @@ void Threading::SignalSemaphore(Semaphore& sem)
    pthread_mutex_unlock(&sem.mutex);
 }
 
-void Threading::DestroySemaphore(Semaphore& sem)
+void ThreadingT::DestroySemaphore(Semaphore& sem)
 {
    pthread_cond_destroy(&sem.condition);
    pthread_mutex_destroy(&sem.mutex);
@@ -107,39 +107,39 @@ void Threading::DestroySemaphore(Semaphore& sem)
 #include <process.h>
 
 //////////////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to the WIN32 OS
+// Implementations for ThreadingT base class specific to the WIN32 OS
 //////////////////////////////////////////////////////////////////////
 
-Threading::Threading()
+ThreadingT::ThreadingT()
 {
 }
 
-Threading::~Threading()
+ThreadingT::~ThreadingT()
 {
 }
 
-bool Threading::CreateMutex(Mutex* pMutex)
+bool ThreadingT::CreateMutex(Mutex* pMutex)
 {
    InitializeCriticalSection(pMutex);
    return (pMutex!=NULL);
 }
 
-void Threading::LockMutex(Mutex& mutex)
+void ThreadingT::LockMutex(Mutex& mutex)
 {
    EnterCriticalSection(&mutex);
 }
 
-void Threading::UnlockMutex(Mutex& mutex)
+void ThreadingT::UnlockMutex(Mutex& mutex)
 {
    LeaveCriticalSection(&mutex);
 }
 
-void Threading::DestroyMutex(Mutex& mutex)
+void ThreadingT::DestroyMutex(Mutex& mutex)
 {
    DeleteCriticalSection(&mutex);
 }
 
-void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
+void ThreadingT::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
     _threadId = *pThreadId;
    _beginthreadex (NULL,
@@ -150,32 +150,32 @@ void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId
          pThreadId);
 }
 
-void Threading::EndThread()
+void ThreadingT::EndThread()
 {
     _endthreadex(0);
 }
 
-void Threading::ThreadSleep(unsigned long dwMilliseconds)
+void ThreadingT::ThreadSleep(unsigned long dwMilliseconds)
 {
    Sleep(dwMilliseconds);
 }
 
-void Threading::CreateSemaphore(Semaphore* pSem)
+void ThreadingT::CreateSemaphore(Semaphore* pSem)
 {
    *pSem = CreateEvent(NULL,0,0,NULL);
 }
 
-void Threading::WaitSemaphore(Semaphore& sem)
+void ThreadingT::WaitSemaphore(Semaphore& sem)
 {
    WaitForSingleObject(sem, INFINITE);
 }
 
-void Threading::SignalSemaphore(Semaphore& sem)
+void ThreadingT::SignalSemaphore(Semaphore& sem)
 {
    SetEvent(sem);
 }
 
-void Threading::DestroySemaphore(Semaphore& sem)
+void ThreadingT::DestroySemaphore(Semaphore& sem)
 {
    CloseHandle(sem);
 }
