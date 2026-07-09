@@ -65,9 +65,14 @@ bool FastXCorr::Initialize(ParamsManager* p) {
 /// <param name="spec">FISpectrum object to be processed</param>
 /// <returns>true upon success</returns>
 bool FastXCorr::ProcessSpectrum(FISpectrum& spec) {
+	std::chrono::steady_clock::time_point start_time, end_time;
+	start_time = chrono::high_resolution_clock::now();
 	double m = spec.precursor[0].mass + PROTON + 50; //M+H to match comet
 	if(params->ultraxcorr) UltraXCorr(spec, m);
 	else XCorr(spec, m);
+	end_time = std::chrono::high_resolution_clock::now();
+	std::chrono::microseconds us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+	spec.processTime_us = (int)us.count();
 	return true;
 }
 

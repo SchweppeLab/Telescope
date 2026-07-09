@@ -26,6 +26,8 @@ namespace TelescopeSharp {
 		Telescope();
 		~Telescope();
 
+		double GetMemUse(bool peptidoform);
+		int GetPeptidoformCount();
 		bool Init(String^ pFile);
 		TScore^ Search(int thread, array<double>^ mz, array<double>^ intensity, double preMz, int preZ);
 

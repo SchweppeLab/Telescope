@@ -7,12 +7,14 @@ FIMemoryManager FIManager::mem;
 Mutex FIManager::mutexThreads;
 bool* FIManager::activeThread;
 size_t FIManager::threads;
+long long FIManager::memUse;
 
 /// <summary>
 /// Default constructor. FIManager::Initialize() must be called after construction to use the FIManager object.
 /// </summary>
 FIManager::FIManager() {
 	threads = 1;
+	memUse = 0;
 	activeThread = nullptr;
 }
 
@@ -168,6 +170,7 @@ void FIManager::InternalGenerateIndex() {
 	//TODO: Get rid of this or find a better place to export messages to the user
 	cout << "Total fragment ions: " << frags << endl;
 	cout << "Estimated fragment index size: " << (double)bytes / 1073741824 << " Gb." << endl;
+	memUse = bytes;
 
 	//Generate the peptide index in a threaded manner
 	ThreadPool<sGenIndex*>* pool2 = new ThreadPool<sGenIndex*>(CalcIndexProcess, (int)threads, (int)threads, 1);

@@ -18,6 +18,27 @@ Telescope::~Telescope() {
 	delete xcorr;
 }
 
+double Telescope::GetMemUse(bool peptidoform) {
+	long long bytes = 0;
+	if (peptidoform) {
+		bytes = dbm->SizePeptide() * sizeof(DBMPeptide);
+		for (size_t a = 0;a < dbm->SizePeptide();a++) {
+			bytes += dbm->Peptide(a).instances.size() * sizeof(DBMPepIndex);
+			bytes += dbm->Peptide(a).mods.size() * sizeof(DBMPepMod);
+			for (size_t b = 0;b < dbm->Peptide(a).mods.size();b++) {
+				bytes += dbm->Peptide(a).mods[b].maskIndex.size() * sizeof(size_t);
+			}
+		}
+	} else {
+		bytes = fim->memUse;
+	}
+	return (double)bytes / 1073741824;
+}
+
+int Telescope::GetPeptidoformCount() {
+	return dbm->totalPeptidoforms;
+}
+
 bool Telescope::Init(String^ pFile) {
 	std::string s = marshal_as<std::string>(pFile);
 	bool ret = params->ReadParams(s);

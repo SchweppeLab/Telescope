@@ -76,6 +76,7 @@ public:
 	bool ScoreSpectrum(FISpectrum* scans, const size_t& count);
 
 	FragmentIonIndex fii;
+	static long long memUse;
 
 protected:
 private:
@@ -95,7 +96,6 @@ private:
 	static Mutex mutexThreads;
 	static bool* activeThread;
 	static size_t threads;
-
 
 };
 

@@ -4,6 +4,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
+	cout << "Telescope version whatever..." << endl;
 	string params = argv[1];
 	TelescopeManager tm;
 	if (!tm.SetParams(params)) {

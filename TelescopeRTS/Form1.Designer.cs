@@ -36,10 +36,17 @@
       button3 = new System.Windows.Forms.Button();
       richTextBox1 = new System.Windows.Forms.RichTextBox();
       splitContainer1 = new System.Windows.Forms.SplitContainer();
+      searchListBox = new System.Windows.Forms.ListBox();
+      button9 = new System.Windows.Forms.Button();
       button4 = new System.Windows.Forms.Button();
       label3 = new System.Windows.Forms.Label();
       numericUpDown1 = new System.Windows.Forms.NumericUpDown();
+      splitContainer3 = new System.Windows.Forms.SplitContainer();
       splitContainer2 = new System.Windows.Forms.SplitContainer();
+      label18 = new System.Windows.Forms.Label();
+      label17 = new System.Windows.Forms.Label();
+      label16 = new System.Windows.Forms.Label();
+      label15 = new System.Windows.Forms.Label();
       label14 = new System.Windows.Forms.Label();
       label13 = new System.Windows.Forms.Label();
       label12 = new System.Windows.Forms.Label();
@@ -56,15 +63,18 @@
       label10 = new System.Windows.Forms.Label();
       button6 = new System.Windows.Forms.Button();
       button5 = new System.Windows.Forms.Button();
-      label15 = new System.Windows.Forms.Label();
-      label16 = new System.Windows.Forms.Label();
-      label17 = new System.Windows.Forms.Label();
-      label18 = new System.Windows.Forms.Label();
+      rtbMessage = new System.Windows.Forms.RichTextBox();
+      label19 = new System.Windows.Forms.Label();
+      label20 = new System.Windows.Forms.Label();
       ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
       splitContainer1.Panel1.SuspendLayout();
       splitContainer1.Panel2.SuspendLayout();
       splitContainer1.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)numericUpDown1).BeginInit();
+      ((System.ComponentModel.ISupportInitialize)splitContainer3).BeginInit();
+      splitContainer3.Panel1.SuspendLayout();
+      splitContainer3.Panel2.SuspendLayout();
+      splitContainer3.SuspendLayout();
       ((System.ComponentModel.ISupportInitialize)splitContainer2).BeginInit();
       splitContainer2.Panel1.SuspendLayout();
       splitContainer2.Panel2.SuspendLayout();
@@ -136,7 +146,7 @@
       richTextBox1.Font = new System.Drawing.Font("Courier New", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
       richTextBox1.Location = new System.Drawing.Point(0, 64);
       richTextBox1.Name = "richTextBox1";
-      richTextBox1.Size = new System.Drawing.Size(1373, 776);
+      richTextBox1.Size = new System.Drawing.Size(1373, 576);
       richTextBox1.TabIndex = 5;
       richTextBox1.Text = "";
       // 
@@ -149,6 +159,8 @@
       // 
       // splitContainer1.Panel1
       // 
+      splitContainer1.Panel1.Controls.Add(searchListBox);
+      splitContainer1.Panel1.Controls.Add(button9);
       splitContainer1.Panel1.Controls.Add(button4);
       splitContainer1.Panel1.Controls.Add(label3);
       splitContainer1.Panel1.Controls.Add(numericUpDown1);
@@ -160,10 +172,30 @@
       // 
       // splitContainer1.Panel2
       // 
-      splitContainer1.Panel2.Controls.Add(splitContainer2);
+      splitContainer1.Panel2.Controls.Add(splitContainer3);
       splitContainer1.Size = new System.Drawing.Size(1668, 1004);
       splitContainer1.SplitterDistance = 160;
       splitContainer1.TabIndex = 6;
+      // 
+      // searchListBox
+      // 
+      searchListBox.FormattingEnabled = true;
+      searchListBox.ItemHeight = 25;
+      searchListBox.Items.AddRange(new object[] { "Telescope", "Comet" });
+      searchListBox.Location = new System.Drawing.Point(1472, 93);
+      searchListBox.Name = "searchListBox";
+      searchListBox.Size = new System.Drawing.Size(184, 54);
+      searchListBox.TabIndex = 9;
+      // 
+      // button9
+      // 
+      button9.Location = new System.Drawing.Point(510, 107);
+      button9.Name = "button9";
+      button9.Size = new System.Drawing.Size(120, 40);
+      button9.TabIndex = 8;
+      button9.Text = "Export Log";
+      button9.UseVisualStyleBackColor = true;
+      button9.Click += button9_Click;
       // 
       // button4
       // 
@@ -189,12 +221,30 @@
       // 
       numericUpDown1.Enabled = false;
       numericUpDown1.Location = new System.Drawing.Point(135, 113);
-      numericUpDown1.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
+      numericUpDown1.Maximum = new decimal(new int[] { 500000, 0, 0, 0 });
       numericUpDown1.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
       numericUpDown1.Name = "numericUpDown1";
       numericUpDown1.Size = new System.Drawing.Size(95, 31);
       numericUpDown1.TabIndex = 5;
       numericUpDown1.Value = new decimal(new int[] { 20, 0, 0, 0 });
+      // 
+      // splitContainer3
+      // 
+      splitContainer3.Dock = System.Windows.Forms.DockStyle.Fill;
+      splitContainer3.Location = new System.Drawing.Point(0, 0);
+      splitContainer3.Name = "splitContainer3";
+      splitContainer3.Orientation = System.Windows.Forms.Orientation.Horizontal;
+      // 
+      // splitContainer3.Panel1
+      // 
+      splitContainer3.Panel1.Controls.Add(splitContainer2);
+      // 
+      // splitContainer3.Panel2
+      // 
+      splitContainer3.Panel2.Controls.Add(rtbMessage);
+      splitContainer3.Size = new System.Drawing.Size(1668, 840);
+      splitContainer3.SplitterDistance = 640;
+      splitContainer3.TabIndex = 7;
       // 
       // splitContainer2
       // 
@@ -204,6 +254,8 @@
       // 
       // splitContainer2.Panel1
       // 
+      splitContainer2.Panel1.Controls.Add(label19);
+      splitContainer2.Panel1.Controls.Add(label20);
       splitContainer2.Panel1.Controls.Add(label18);
       splitContainer2.Panel1.Controls.Add(label17);
       splitContainer2.Panel1.Controls.Add(label16);
@@ -223,9 +275,45 @@
       // 
       splitContainer2.Panel2.Controls.Add(richTextBox1);
       splitContainer2.Panel2.Controls.Add(panel1);
-      splitContainer2.Size = new System.Drawing.Size(1668, 840);
+      splitContainer2.Size = new System.Drawing.Size(1668, 640);
       splitContainer2.SplitterDistance = 291;
       splitContainer2.TabIndex = 6;
+      // 
+      // label18
+      // 
+      label18.AutoSize = true;
+      label18.Location = new System.Drawing.Point(188, 171);
+      label18.Name = "label18";
+      label18.Size = new System.Drawing.Size(22, 25);
+      label18.TabIndex = 13;
+      label18.Text = "0";
+      // 
+      // label17
+      // 
+      label17.AutoSize = true;
+      label17.Location = new System.Drawing.Point(188, 146);
+      label17.Name = "label17";
+      label17.Size = new System.Drawing.Size(22, 25);
+      label17.TabIndex = 12;
+      label17.Text = "0";
+      // 
+      // label16
+      // 
+      label16.AutoSize = true;
+      label16.Location = new System.Drawing.Point(16, 171);
+      label16.Name = "label16";
+      label16.Size = new System.Drawing.Size(134, 25);
+      label16.TabIndex = 11;
+      label16.Text = "Slowest Search:";
+      // 
+      // label15
+      // 
+      label15.AutoSize = true;
+      label15.Location = new System.Drawing.Point(16, 146);
+      label15.Name = "label15";
+      label15.Size = new System.Drawing.Size(127, 25);
+      label15.TabIndex = 10;
+      label15.Text = "Fastest Search:";
       // 
       // label14
       // 
@@ -380,41 +468,32 @@
       button5.UseVisualStyleBackColor = true;
       button5.Click += button5_Click;
       // 
-      // label15
+      // rtbMessage
       // 
-      label15.AutoSize = true;
-      label15.Location = new System.Drawing.Point(16, 146);
-      label15.Name = "label15";
-      label15.Size = new System.Drawing.Size(127, 25);
-      label15.TabIndex = 10;
-      label15.Text = "Fastest Search:";
+      rtbMessage.Dock = System.Windows.Forms.DockStyle.Fill;
+      rtbMessage.Location = new System.Drawing.Point(0, 0);
+      rtbMessage.Name = "rtbMessage";
+      rtbMessage.Size = new System.Drawing.Size(1668, 196);
+      rtbMessage.TabIndex = 0;
+      rtbMessage.Text = "";
       // 
-      // label16
+      // label19
       // 
-      label16.AutoSize = true;
-      label16.Location = new System.Drawing.Point(16, 171);
-      label16.Name = "label16";
-      label16.Size = new System.Drawing.Size(134, 25);
-      label16.TabIndex = 11;
-      label16.Text = "Slowest Search:";
+      label19.AutoSize = true;
+      label19.Location = new System.Drawing.Point(188, 214);
+      label19.Name = "label19";
+      label19.Size = new System.Drawing.Size(22, 25);
+      label19.TabIndex = 15;
+      label19.Text = "0";
       // 
-      // label17
+      // label20
       // 
-      label17.AutoSize = true;
-      label17.Location = new System.Drawing.Point(188, 146);
-      label17.Name = "label17";
-      label17.Size = new System.Drawing.Size(22, 25);
-      label17.TabIndex = 12;
-      label17.Text = "0";
-      // 
-      // label18
-      // 
-      label18.AutoSize = true;
-      label18.Location = new System.Drawing.Point(188, 171);
-      label18.Name = "label18";
-      label18.Size = new System.Drawing.Size(22, 25);
-      label18.TabIndex = 13;
-      label18.Text = "0";
+      label20.AutoSize = true;
+      label20.Location = new System.Drawing.Point(16, 214);
+      label20.Name = "label20";
+      label20.Size = new System.Drawing.Size(129, 25);
+      label20.TabIndex = 14;
+      label20.Text = "Scans Queued:";
       // 
       // Form1
       // 
@@ -431,6 +510,10 @@
       ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
       splitContainer1.ResumeLayout(false);
       ((System.ComponentModel.ISupportInitialize)numericUpDown1).EndInit();
+      splitContainer3.Panel1.ResumeLayout(false);
+      splitContainer3.Panel2.ResumeLayout(false);
+      ((System.ComponentModel.ISupportInitialize)splitContainer3).EndInit();
+      splitContainer3.ResumeLayout(false);
       splitContainer2.Panel1.ResumeLayout(false);
       splitContainer2.Panel1.PerformLayout();
       splitContainer2.Panel2.ResumeLayout(false);
@@ -474,6 +557,12 @@
     private System.Windows.Forms.Label label17;
     private System.Windows.Forms.Label label16;
     private System.Windows.Forms.Label label15;
+    private System.Windows.Forms.Button button9;
+    private System.Windows.Forms.ListBox searchListBox;
+    private System.Windows.Forms.SplitContainer splitContainer3;
+    private System.Windows.Forms.RichTextBox rtbMessage;
+    private System.Windows.Forms.Label label19;
+    private System.Windows.Forms.Label label20;
   }
 }
 

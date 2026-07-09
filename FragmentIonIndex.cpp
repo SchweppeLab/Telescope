@@ -364,6 +364,9 @@ void FragmentIonIndex::PopulateIndex(unsigned int start, unsigned int stop, unsi
 /// <returns>true upon success</returns>
 bool FragmentIonIndex::ScoreSpectrum(FISpectrum& scan, double* scores) {
 
+	std::chrono::steady_clock::time_point start_time, end_time;
+	start_time = chrono::high_resolution_clock::now();
+
 	//Iterate over each precursor associated with this scan. Note that having multiple precursors
 	//is useful for either:
 	//  1. Testing multiple precursor masses where the precursor mass is ambiguous.
@@ -433,6 +436,10 @@ bool FragmentIonIndex::ScoreSpectrum(FISpectrum& scan, double* scores) {
 
 	}
 	
+	end_time = std::chrono::high_resolution_clock::now();
+	std::chrono::microseconds us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+	scan.searchTime_us = (int)us.count();
+
 	return true;
 }
 

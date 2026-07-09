@@ -21,4 +21,9 @@
     <PackageReference Include="Nova.IO" Version="1.0.0.14" />
     <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CometWrapper">
+      <HintPath>..\..\Comet-AtThermo\x64\Release\CometWrapper.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

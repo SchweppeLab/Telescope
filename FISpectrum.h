@@ -90,6 +90,8 @@ public:
 
 	std::vector<FIPrecursor> precursor;
 	int scanNumber = 0;
+	int searchTime_us = 0; //in microseconds.
+	int processTime_us = 0; //in microseconds.
 
 protected:
 private:
