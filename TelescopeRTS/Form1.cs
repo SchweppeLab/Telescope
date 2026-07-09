@@ -49,7 +49,6 @@ namespace TelescopeRTS
 
     object lockObject = new object();
     object lockResult = new object();
-    bool killMe = false;
 
     int threadCount = 20;
     bool[] threads = new bool[20];
@@ -197,7 +196,6 @@ namespace TelescopeRTS
 
       count = 0;
       //richTextBox1.Text = string.Empty;
-      killMe = false;
       results.Clear();
       curPage = 1;
       maxPage = 1;
@@ -339,70 +337,6 @@ namespace TelescopeRTS
       }
     }
 
-    private void AnalyzeSpectrum()//Object source, ElapsedEventArgs e)
-    {
-      if (count < spectra.Count)
-      {
-        //Queue up the scan
-        scanQueue.Enqueue(new ScanQueueItem(count++,globalWatch.ElapsedTicks));
-
-
-        //Check for next available thread
-        long frequency = Stopwatch.Frequency;
-        Stopwatch waitTime = new Stopwatch();
-        waitTime.Start();
-
-        int tIndex = -1;
-        while (tIndex < 0)
-        {
-          lock (lockObject)
-          {
-            for (int a = 0; a < threadCount; a++)
-            {
-              if (!threads[a])
-              {
-                tIndex = a;
-                threads[a] = true;
-                threadUse++;
-                break;
-              }
-            }
-          }
-        }
-        waitTime.Stop();
-
-        //If no available thread, return so next scan can be queued
-        if (tIndex < 0)
-        {
-          return;
-        }
-
-        //if thread was available, score the next scan in the queue, otherwise return the thread to the pool
-        if (scanQueue.TryDequeue(out ScanQueueItem res))
-        {
-          if (searchListBox.SelectedIndex == 0)
-          {
-            Task t = tf.StartNew(() => ScoreSpectrum(tIndex, res));
-          }
-          else
-          {
-            Task t = tf.StartNew(() => ScoreCometSpectrum(tIndex, res));
-          }
-        }
-        else
-        {
-          lock(lockObject){ 
-            threads[tIndex] = false;
-            threadUse--;
-          }
-        }
-      }
-      else
-      {
-        killMe = true;
-      }
-    }
-
     private void Log(string msg)
     {
       rtbMessage.AppendText(msg + Environment.NewLine);
@@ -412,7 +346,7 @@ namespace TelescopeRTS
     {
       long frequency = Stopwatch.Frequency;
       TResult res = new TResult();
-      res.waitTime = (globalWatch.ElapsedTicks - sci.ticks) / frequency * 1000000;
+      res.waitTime = ((double)(globalWatch.ElapsedTicks - sci.ticks)) / frequency * 1000000;
       
       Stopwatch lagwatch = new Stopwatch();
       lagwatch.Start();
@@ -671,7 +605,7 @@ namespace TelescopeRTS
 
     private void button4_Click(object sender, EventArgs e)
     {
-      killMe = true;
+      //find a good way to stop the analysis. it is currently broken.
       button4.Enabled = false;
     }
 

@@ -43,8 +43,8 @@ namespace TelescopeRTS
       s += "Peptidoform Memory: " + pepMemory + " Gb"+ Environment.NewLine;
       s += "Index Memory: " + memory + " Gb" + Environment.NewLine;
       s += "Scan Count: " + scanCount + Environment.NewLine;
-      s += "Realized Speed: " + scanCount / (queueTime / 1000) + " Hz" + Environment.NewLine;
       s += "Speed: " + Hz + " scans per second" + Environment.NewLine;
+      s += "Realized Speed: " + scanCount / (queueTime / 1000) + " Hz" + Environment.NewLine;
 
       s += "Scans searched: " + scansSearched.ToString() + Environment.NewLine;
       s += "Search time: " + searchTime/1000 + " seconds" + Environment.NewLine;
