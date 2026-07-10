@@ -17,13 +17,24 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
-    <PackageReference Include="Nova" Version="1.0.0.14" />
-    <PackageReference Include="Nova.IO" Version="1.0.0.14" />
+    <PackageReference Include="Nova" Version="1.0.0.18" />
+    <PackageReference Include="Nova.IO" Version="1.0.0.18" />
     <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="CometWrapper">
-      <HintPath>..\..\Comet-AtThermo\x64\Release\CometWrapper.dll</HintPath>
+      <HintPath>..\..\..\SchweppeLab\Comet-AtThermo\x64\Release\CometWrapper.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Form1.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

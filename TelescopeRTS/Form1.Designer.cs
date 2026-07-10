@@ -36,6 +36,8 @@
       button3 = new System.Windows.Forms.Button();
       richTextBox1 = new System.Windows.Forms.RichTextBox();
       splitContainer1 = new System.Windows.Forms.SplitContainer();
+      label21 = new System.Windows.Forms.Label();
+      nudThreads = new System.Windows.Forms.NumericUpDown();
       searchListBox = new System.Windows.Forms.ListBox();
       button9 = new System.Windows.Forms.Button();
       button4 = new System.Windows.Forms.Button();
@@ -43,6 +45,8 @@
       numericUpDown1 = new System.Windows.Forms.NumericUpDown();
       splitContainer3 = new System.Windows.Forms.SplitContainer();
       splitContainer2 = new System.Windows.Forms.SplitContainer();
+      label19 = new System.Windows.Forms.Label();
+      label20 = new System.Windows.Forms.Label();
       label18 = new System.Windows.Forms.Label();
       label17 = new System.Windows.Forms.Label();
       label16 = new System.Windows.Forms.Label();
@@ -64,12 +68,11 @@
       button6 = new System.Windows.Forms.Button();
       button5 = new System.Windows.Forms.Button();
       rtbMessage = new System.Windows.Forms.RichTextBox();
-      label19 = new System.Windows.Forms.Label();
-      label20 = new System.Windows.Forms.Label();
       ((System.ComponentModel.ISupportInitialize)splitContainer1).BeginInit();
       splitContainer1.Panel1.SuspendLayout();
       splitContainer1.Panel2.SuspendLayout();
       splitContainer1.SuspendLayout();
+      ((System.ComponentModel.ISupportInitialize)nudThreads).BeginInit();
       ((System.ComponentModel.ISupportInitialize)numericUpDown1).BeginInit();
       ((System.ComponentModel.ISupportInitialize)splitContainer3).BeginInit();
       splitContainer3.Panel1.SuspendLayout();
@@ -159,6 +162,8 @@
       // 
       // splitContainer1.Panel1
       // 
+      splitContainer1.Panel1.Controls.Add(label21);
+      splitContainer1.Panel1.Controls.Add(nudThreads);
       splitContainer1.Panel1.Controls.Add(searchListBox);
       splitContainer1.Panel1.Controls.Add(button9);
       splitContainer1.Panel1.Controls.Add(button4);
@@ -176,6 +181,25 @@
       splitContainer1.Size = new System.Drawing.Size(1668, 1004);
       splitContainer1.SplitterDistance = 160;
       splitContainer1.TabIndex = 6;
+      // 
+      // label21
+      // 
+      label21.AutoSize = true;
+      label21.Location = new System.Drawing.Point(716, 115);
+      label21.Name = "label21";
+      label21.Size = new System.Drawing.Size(207, 25);
+      label21.TabIndex = 11;
+      label21.Text = "Threads (Telescope Only)";
+      // 
+      // nudThreads
+      // 
+      nudThreads.Location = new System.Drawing.Point(636, 113);
+      nudThreads.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
+      nudThreads.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+      nudThreads.Name = "nudThreads";
+      nudThreads.Size = new System.Drawing.Size(74, 31);
+      nudThreads.TabIndex = 10;
+      nudThreads.Value = new decimal(new int[] { 1, 0, 0, 0 });
       // 
       // searchListBox
       // 
@@ -278,6 +302,24 @@
       splitContainer2.Size = new System.Drawing.Size(1668, 640);
       splitContainer2.SplitterDistance = 291;
       splitContainer2.TabIndex = 6;
+      // 
+      // label19
+      // 
+      label19.AutoSize = true;
+      label19.Location = new System.Drawing.Point(188, 214);
+      label19.Name = "label19";
+      label19.Size = new System.Drawing.Size(22, 25);
+      label19.TabIndex = 15;
+      label19.Text = "0";
+      // 
+      // label20
+      // 
+      label20.AutoSize = true;
+      label20.Location = new System.Drawing.Point(16, 214);
+      label20.Name = "label20";
+      label20.Size = new System.Drawing.Size(129, 25);
+      label20.TabIndex = 14;
+      label20.Text = "Scans Queued:";
       // 
       // label18
       // 
@@ -477,24 +519,6 @@
       rtbMessage.TabIndex = 0;
       rtbMessage.Text = "";
       // 
-      // label19
-      // 
-      label19.AutoSize = true;
-      label19.Location = new System.Drawing.Point(188, 214);
-      label19.Name = "label19";
-      label19.Size = new System.Drawing.Size(22, 25);
-      label19.TabIndex = 15;
-      label19.Text = "0";
-      // 
-      // label20
-      // 
-      label20.AutoSize = true;
-      label20.Location = new System.Drawing.Point(16, 214);
-      label20.Name = "label20";
-      label20.Size = new System.Drawing.Size(129, 25);
-      label20.TabIndex = 14;
-      label20.Text = "Scans Queued:";
-      // 
       // Form1
       // 
       AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
@@ -509,6 +533,7 @@
       splitContainer1.Panel2.ResumeLayout(false);
       ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
       splitContainer1.ResumeLayout(false);
+      ((System.ComponentModel.ISupportInitialize)nudThreads).EndInit();
       ((System.ComponentModel.ISupportInitialize)numericUpDown1).EndInit();
       splitContainer3.Panel1.ResumeLayout(false);
       splitContainer3.Panel2.ResumeLayout(false);
@@ -563,6 +588,8 @@
     private System.Windows.Forms.RichTextBox rtbMessage;
     private System.Windows.Forms.Label label19;
     private System.Windows.Forms.Label label20;
+    private System.Windows.Forms.Label label21;
+    private System.Windows.Forms.NumericUpDown nudThreads;
   }
 }
 

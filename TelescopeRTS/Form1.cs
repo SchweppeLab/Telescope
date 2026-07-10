@@ -22,20 +22,10 @@ using TelescopeSharp;
 using ThermoFisher.CommonCore.Data;
 using ThermoFisher.CommonCore.Data.Business;
 using ThermoFisher.CommonCore.Data.Interfaces;
+using static System.Net.WebRequestMethods;
 
 namespace TelescopeRTS
 {
-
-  public class ScanQueueItem
-  {
-    public int scanIndex = 0;
-    public long ticks = 0;
-    public ScanQueueItem(int scanIndex, long ticks)
-    {
-      this.scanIndex = scanIndex;
-      this.ticks = ticks;
-    }
-  }
 
   public partial class Form1 : Form
   {
@@ -193,6 +183,7 @@ namespace TelescopeRTS
       numericUpDown1.Enabled = false;
       button3.Enabled = false;
       button4.Enabled = true;
+      nudThreads.Enabled = false;
 
       count = 0;
       //richTextBox1.Text = string.Empty;
@@ -216,6 +207,14 @@ namespace TelescopeRTS
       minMatchTime = 0;
       maxMatchTime = 0;
 
+      if (searchListBox.SelectedIndex == 0)
+      {
+        threadCount = (int)nudThreads.Value;
+      }
+      else
+      {
+        threadCount = 1;
+      }
       for (int a = 0; a < threadCount; a++) threads[a] = false;
       threadUse = 0;
 
@@ -287,6 +286,8 @@ namespace TelescopeRTS
 
       numericUpDown1.Enabled = true;
       button3.Enabled = true;
+      button4.Enabled = false;
+      nudThreads.Enabled = true;
     }
 
     private async Task SpectrumMonitor()
@@ -566,14 +567,14 @@ namespace TelescopeRTS
 
     private void UpdateResults()
     {
-      richTextBox1.Text = string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 40 + "} {4,-" + 12 + "}", "SCAN", "TIME(us)", "SCORE", "PEPTIDE", "PROTEIN") + Environment.NewLine;
-      string str = new string('=', 75);
+      richTextBox1.Text = string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", "SCAN", "TIME(us)", "DELAY(us)", "SCORE", "PEPTIDE", "PROTEIN") + Environment.NewLine;
+      string str = new string('=', 95);
       richTextBox1.Text += str + Environment.NewLine;
       int start = (curPage - 1) * 20;
       for (int i = start; i < start + 20; i++)
       {
         if (i == results.Count) break;
-        richTextBox1.Text += string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 40 + "} {4,-" + 12 + "}", results[i].scanNumber.ToString(), results[i].searchTime.ToString("F2"), results[i].score.ToString("F2"), results[i].peptide, results[i].protein) + Environment.NewLine;
+        richTextBox1.Text += string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", results[i].scanNumber.ToString(), results[i].searchTime.ToString("F2"), results[i].waitTime.ToString("F2"),results[i].score.ToString("F2"), results[i].peptide, results[i].protein) + Environment.NewLine;
       }
     }
 
