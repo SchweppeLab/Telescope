@@ -7,7 +7,6 @@ Telescope::Telescope() {
 	params = new ParamsManager();
 	fim = new FIManager();
 	mm = new FIMemoryManager();
-	xcorr = new FastXCorr();
 }
 
 Telescope::~Telescope() {
@@ -15,7 +14,7 @@ Telescope::~Telescope() {
 	delete params;
 	delete fim;
 	delete mm;
-	delete xcorr;
+	delete[] xcorr;
 }
 
 double Telescope::GetMemUse(bool peptidoform) {
@@ -48,7 +47,11 @@ bool Telescope::Init(String^ pFile) {
 	ret = ProcessDB();
 	if (!ret) return false;
 
-	xcorr->Initialize(params);
+	// One FastXCorr instance per search thread slot: FastXCorr keeps its scratch buffers
+	// as reused member state (not safe for concurrent calls), so each concurrently-running
+	// search thread needs its own private instance - mirrors mm->AllocateScores below.
+	xcorr = new FastXCorr[params->threads];
+	for (int t = 0; t < params->threads; t++) xcorr[t].Initialize(params);
 
 	fim->GeneratePeptideMap();
 	fim->GenerateIndex();
@@ -130,6 +133,11 @@ TScore^ Telescope::Search(int thread, array<double>^ mz, array<double>^ intensit
 	int count = 0;
 	while (index < fim->fii.pepArrSz && fim->fii.peptides[index++].mass < max) count++;
 	s.precursor.back().scoreCount = count;
+	if (count > maxScoreCount) {
+		FILE* f = fopen("wtf.txt", "at");
+		fprintf(f, "%d fail %d %d", s.scanNumber, count, maxScoreCount);
+		fclose(f);
+	}
 
 	//Process spectrum peaks
 	s.Allocate(mz->Length);
@@ -142,8 +150,8 @@ TScore^ Telescope::Search(int thread, array<double>^ mz, array<double>^ intensit
 		s.AddPeak(p);
 	}
 
-	//Xcorr, if requested
-	if(params->xcorr)	xcorr->ProcessSpectrum(s);
+	//Xcorr, if requested (each thread uses its own FastXCorr instance - see Init())
+	if(params->xcorr)	xcorr[thread].ProcessSpectrum(s);
 
 	//Do search
 	fim->fii.ScoreSpectrum(s, mm->scores[thread]);

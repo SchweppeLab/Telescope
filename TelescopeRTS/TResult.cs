@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace TelescopeRTS
 {
+  // One search result plus its timing breakdown, produced by ScoreSpectrum/ScoreCometSpectrum
+  // and displayed a page at a time in rtbResults.
   internal class TResult
   {
     public int scanNumber = 0;

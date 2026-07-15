@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing.Printing;
 using System.Linq;
@@ -8,203 +8,209 @@ using CometWrapper;
 
 namespace TelescopeRTS
 {
-  public class DoubleRange : DoubleRangeWrapper
-  {
-    //pu
-  }
+  // Thin wrappers so DoubleRangeWrapper/IntRangeWrapper (from CometWrapper) can be
+  // constructed directly as TelescopeRTS types.
+  public class DoubleRange : DoubleRangeWrapper { }
   public class IntRange : IntRangeWrapper { }
 
+  // Translates a Comet .params file into calls on CometSearchManagerWrapper.SetParam(),
+  // using a lookup table of each known parameter's value type (see paramValueTypes).
   internal class CometParamsParser : ParamsParser
   {
-    //0 = int, 1 = double, 2=string,3=var mod special case, 4=int int, 5=double double
-    Dictionary<string, int> cometParams = new Dictionary<string, int>();
+    // Maps each recognized Comet parameter name to how its value should be parsed:
+    // 0 = int, 1 = double, 2 = string, 3 = variable-mod special case (8 fields),
+    // 4 = int-int range, 5 = double-double range.
+    Dictionary<string, int> paramValueTypes = new Dictionary<string, int>();
 
     public CometParamsParser()
     {
-      cometParams.Add("add_Cterm_peptide", 1);
-      cometParams.Add("add_Cterm_protein", 1);
-      cometParams.Add("add_Nterm_peptide", 1);
-      cometParams.Add("add_Nterm_protein", 1);
-      cometParams.Add("add_A_alanine", 1);
-      cometParams.Add("add_B_user_amino_acid", 1);
-      cometParams.Add("add_C_cysteine", 1);
-      cometParams.Add("add_D_aspartic_acid", 1);
-      cometParams.Add("add_E_glutamic_acid", 1);
-      cometParams.Add("add_F_phenylalanine", 1);
-      cometParams.Add("add_G_glycine", 1);
-      cometParams.Add("add_H_histidine", 1);
-      cometParams.Add("add_I_isoleucine", 1);
-      cometParams.Add("add_J_user_amino_acid", 1);
-      cometParams.Add("add_K_lysine", 1);
-      cometParams.Add("add_L_leucine", 1);
-      cometParams.Add("add_M_methionine", 1);
-      cometParams.Add("add_N_asparagine", 1);
-      cometParams.Add("add_O_pyrrolysine", 1);
-      cometParams.Add("add_P_proline", 1);
-      cometParams.Add("add_Q_glutamine", 1);
-      cometParams.Add("add_R_arginine", 1);
-      cometParams.Add("add_S_serine", 1);
-      cometParams.Add("add_T_threonine", 1);
-      cometParams.Add("add_U_selenocysteine", 1);
-      cometParams.Add("add_V_valine", 1);
-      cometParams.Add("add_W_tryptophan", 1);
-      cometParams.Add("add_X_user_amino_acid", 1);
-      cometParams.Add("add_Y_tyrosine", 1);
-      cometParams.Add("add_Z_user_amino_acid", 1);
-      cometParams.Add("allowed_missed_cleavage", 0);
-      cometParams.Add("clear_mz_range", 5);
-      cometParams.Add("clip_nterm_methionine", 0);
-      cometParams.Add("database_name", 2);
-      cometParams.Add("decoy_prefix", 2);
-      cometParams.Add("decoy_search", 0);
-      cometParams.Add("digest_mass_range", 5);
-      cometParams.Add("equal_I_and_L", 0);
-      cometParams.Add("fragindex_max_fragmentmass", 1);
-      cometParams.Add("fragindex_min_fragmentmass", 1);
-      cometParams.Add("fragindex_min_ions_report", 0);
-      cometParams.Add("fragindex_min_ions_score", 0);
-      cometParams.Add("fragindex_num_spectrumpeaks", 0);
-      cometParams.Add("fragindex_skipreadprecursors", 0);
-      cometParams.Add("fragment_bin_offset", 1);
-      cometParams.Add("fragment_bin_tol", 1);
-      cometParams.Add("isotope_error", 0);
-      cometParams.Add("max_duplicate_proteins", 0);
-      cometParams.Add("max_fragment_charge", 0);
-      cometParams.Add("max_precursor_charge", 0);
-      cometParams.Add("max_variable_mods_in_peptide", 0);
-      cometParams.Add("min_precursor_charge", 0);
-      cometParams.Add("minimum_intensity", 1);
-      cometParams.Add("minimum_peaks", 0);
-      cometParams.Add("ms_level", 0);
-      cometParams.Add("num_output_lines", 0);
-      cometParams.Add("num_enzyme_termini", 0);
-      cometParams.Add("num_threads", 0);
-      cometParams.Add("output_mzidentmlfile", 0);
-      cometParams.Add("output_pepxmlfile", 0);
-      cometParams.Add("output_percolatorfile", 0);
-      cometParams.Add("output_sqtfile", 0);
-      cometParams.Add("output_txtfile", 0);
-      cometParams.Add("override_charge", 0);
-      cometParams.Add("peptide_mass_tolerance_lower", 1);
-      cometParams.Add("peptide_mass_tolerance_upper", 1);
-      cometParams.Add("peptide_mass_units", 0);
-      cometParams.Add("peptide_length_range", 4);
-      cometParams.Add("percentage_base_peak", 1);
-      cometParams.Add("precursor_charge", 4);
-      cometParams.Add("precursor_tolerance_type", 0);
-      cometParams.Add("remove_precursor_peak", 0);
-      cometParams.Add("require_variable_mod", 0);
-      cometParams.Add("sample_enzyme_number", 0);
-      cometParams.Add("search_enzyme_number", 0);
-      cometParams.Add("search_enzyme2_number", 0);
-      cometParams.Add("spectrum_batch_size", 0);
-      cometParams.Add("theoretical_fragment_ions", 0);
-      cometParams.Add("use_A_ions", 0);
-      cometParams.Add("use_B_ions", 0);
-      cometParams.Add("use_C_ions", 0);
-      cometParams.Add("use_NL_ions", 0);
-      cometParams.Add("use_X_ions", 0);
-      cometParams.Add("use_Y_ions", 0);
-      cometParams.Add("use_Z_ions", 0);
-      cometParams.Add("use_Z1_ions", 0);
-      cometParams.Add("variable_mod01", 3);
-      cometParams.Add("variable_mod02", 3);
-      cometParams.Add("variable_mod03", 3);
-      cometParams.Add("variable_mod04", 3);
-      cometParams.Add("variable_mod05", 3);
-      cometParams.Add("variable_mod06", 3);
-      cometParams.Add("variable_mod07", 3);
-      cometParams.Add("variable_mod08", 3);
-      cometParams.Add("variable_mod09", 3);
-      cometParams.Add("variable_mod10", 3);
-      cometParams.Add("variable_mod11", 3);
-      cometParams.Add("variable_mod12", 3);
-      cometParams.Add("variable_mod13", 3);
-      cometParams.Add("variable_mod14", 3);
-      cometParams.Add("variable_mod15", 3);
+      paramValueTypes.Add("add_Cterm_peptide", 1);
+      paramValueTypes.Add("add_Cterm_protein", 1);
+      paramValueTypes.Add("add_Nterm_peptide", 1);
+      paramValueTypes.Add("add_Nterm_protein", 1);
+      paramValueTypes.Add("add_A_alanine", 1);
+      paramValueTypes.Add("add_B_user_amino_acid", 1);
+      paramValueTypes.Add("add_C_cysteine", 1);
+      paramValueTypes.Add("add_D_aspartic_acid", 1);
+      paramValueTypes.Add("add_E_glutamic_acid", 1);
+      paramValueTypes.Add("add_F_phenylalanine", 1);
+      paramValueTypes.Add("add_G_glycine", 1);
+      paramValueTypes.Add("add_H_histidine", 1);
+      paramValueTypes.Add("add_I_isoleucine", 1);
+      paramValueTypes.Add("add_J_user_amino_acid", 1);
+      paramValueTypes.Add("add_K_lysine", 1);
+      paramValueTypes.Add("add_L_leucine", 1);
+      paramValueTypes.Add("add_M_methionine", 1);
+      paramValueTypes.Add("add_N_asparagine", 1);
+      paramValueTypes.Add("add_O_pyrrolysine", 1);
+      paramValueTypes.Add("add_P_proline", 1);
+      paramValueTypes.Add("add_Q_glutamine", 1);
+      paramValueTypes.Add("add_R_arginine", 1);
+      paramValueTypes.Add("add_S_serine", 1);
+      paramValueTypes.Add("add_T_threonine", 1);
+      paramValueTypes.Add("add_U_selenocysteine", 1);
+      paramValueTypes.Add("add_V_valine", 1);
+      paramValueTypes.Add("add_W_tryptophan", 1);
+      paramValueTypes.Add("add_X_user_amino_acid", 1);
+      paramValueTypes.Add("add_Y_tyrosine", 1);
+      paramValueTypes.Add("add_Z_user_amino_acid", 1);
+      paramValueTypes.Add("allowed_missed_cleavage", 0);
+      paramValueTypes.Add("clear_mz_range", 5);
+      paramValueTypes.Add("clip_nterm_methionine", 0);
+      paramValueTypes.Add("database_name", 2);
+      paramValueTypes.Add("decoy_prefix", 2);
+      paramValueTypes.Add("decoy_search", 0);
+      paramValueTypes.Add("digest_mass_range", 5);
+      paramValueTypes.Add("equal_I_and_L", 0);
+      paramValueTypes.Add("fragindex_max_fragmentmass", 1);
+      paramValueTypes.Add("fragindex_min_fragmentmass", 1);
+      paramValueTypes.Add("fragindex_min_ions_report", 0);
+      paramValueTypes.Add("fragindex_min_ions_score", 0);
+      paramValueTypes.Add("fragindex_num_spectrumpeaks", 0);
+      paramValueTypes.Add("fragindex_skipreadprecursors", 0);
+      paramValueTypes.Add("fragment_bin_offset", 1);
+      paramValueTypes.Add("fragment_bin_tol", 1);
+      paramValueTypes.Add("isotope_error", 0);
+      paramValueTypes.Add("max_duplicate_proteins", 0);
+      paramValueTypes.Add("max_fragment_charge", 0);
+      paramValueTypes.Add("max_precursor_charge", 0);
+      paramValueTypes.Add("max_variable_mods_in_peptide", 0);
+      paramValueTypes.Add("min_precursor_charge", 0);
+      paramValueTypes.Add("minimum_intensity", 1);
+      paramValueTypes.Add("minimum_peaks", 0);
+      paramValueTypes.Add("ms_level", 0);
+      paramValueTypes.Add("num_output_lines", 0);
+      paramValueTypes.Add("num_enzyme_termini", 0);
+      paramValueTypes.Add("num_threads", 0);
+      paramValueTypes.Add("output_mzidentmlfile", 0);
+      paramValueTypes.Add("output_pepxmlfile", 0);
+      paramValueTypes.Add("output_percolatorfile", 0);
+      paramValueTypes.Add("output_sqtfile", 0);
+      paramValueTypes.Add("output_txtfile", 0);
+      paramValueTypes.Add("override_charge", 0);
+      paramValueTypes.Add("peptide_mass_tolerance_lower", 1);
+      paramValueTypes.Add("peptide_mass_tolerance_upper", 1);
+      paramValueTypes.Add("peptide_mass_units", 0);
+      paramValueTypes.Add("peptide_length_range", 4);
+      paramValueTypes.Add("percentage_base_peak", 1);
+      paramValueTypes.Add("precursor_charge", 4);
+      paramValueTypes.Add("precursor_tolerance_type", 0);
+      paramValueTypes.Add("remove_precursor_peak", 0);
+      paramValueTypes.Add("require_variable_mod", 0);
+      paramValueTypes.Add("sample_enzyme_number", 0);
+      paramValueTypes.Add("search_enzyme_number", 0);
+      paramValueTypes.Add("search_enzyme2_number", 0);
+      paramValueTypes.Add("spectrum_batch_size", 0);
+      paramValueTypes.Add("theoretical_fragment_ions", 0);
+      paramValueTypes.Add("use_A_ions", 0);
+      paramValueTypes.Add("use_B_ions", 0);
+      paramValueTypes.Add("use_C_ions", 0);
+      paramValueTypes.Add("use_NL_ions", 0);
+      paramValueTypes.Add("use_X_ions", 0);
+      paramValueTypes.Add("use_Y_ions", 0);
+      paramValueTypes.Add("use_Z_ions", 0);
+      paramValueTypes.Add("use_Z1_ions", 0);
+      paramValueTypes.Add("variable_mod01", 3);
+      paramValueTypes.Add("variable_mod02", 3);
+      paramValueTypes.Add("variable_mod03", 3);
+      paramValueTypes.Add("variable_mod04", 3);
+      paramValueTypes.Add("variable_mod05", 3);
+      paramValueTypes.Add("variable_mod06", 3);
+      paramValueTypes.Add("variable_mod07", 3);
+      paramValueTypes.Add("variable_mod08", 3);
+      paramValueTypes.Add("variable_mod09", 3);
+      paramValueTypes.Add("variable_mod10", 3);
+      paramValueTypes.Add("variable_mod11", 3);
+      paramValueTypes.Add("variable_mod12", 3);
+      paramValueTypes.Add("variable_mod13", 3);
+      paramValueTypes.Add("variable_mod14", 3);
+      paramValueTypes.Add("variable_mod15", 3);
     }
 
-    public bool SetEnzyme(CometSearchManagerWrapper comet, string s)
+    // Configures Comet's enzyme settings from a "Name BreakAA NoBreakAA Offset MissedCleavages" string.
+    public bool SetEnzyme(CometSearchManagerWrapper comet, string enzymeSpec)
     {
-      string[] v = s.Split(' ');
-      if (v.Length == 5)
+      string[] parts = enzymeSpec.Split(' ');
+      if (parts.Length == 5)
       {
         var enzymeInfo = new EnzymeInfoWrapper();
-        enzymeInfo.set_SearchEnzymeName(v[0]); //Trypsin
-        enzymeInfo.set_SearchEnzymeBreakAA(v[1]); //KR
-        enzymeInfo.set_SearchEnzymeNoBreakAA(v[2]); //P
-        enzymeInfo.set_SearchEnzymeOffSet(int.Parse(v[3])); //1 (c-term)
-        enzymeInfo.set_AllowedMissedCleavge(int.Parse(v[4])); //1
-        return comet.SetParam("[COMET_ENZYME_INFO]", s, enzymeInfo);
+        enzymeInfo.set_SearchEnzymeName(parts[0]); //Trypsin
+        enzymeInfo.set_SearchEnzymeBreakAA(parts[1]); //KR
+        enzymeInfo.set_SearchEnzymeNoBreakAA(parts[2]); //P
+        enzymeInfo.set_SearchEnzymeOffSet(int.Parse(parts[3])); //1 (c-term)
+        enzymeInfo.set_AllowedMissedCleavge(int.Parse(parts[4])); //1
+        return comet.SetParam("[COMET_ENZYME_INFO]", enzymeSpec, enzymeInfo);
       }
       return false;
     }
 
+    // Looks up the given parameter's expected type in paramValueTypes, parses its value
+    // accordingly, and forwards it to CometSearchManagerWrapper.SetParam().
     public bool SetParam(CometSearchManagerWrapper comet, ParamTuple param)
     {
-      int pType;
-      int iVal;
-      int iVal2;
-      double dVal;
-      double dVal2;
-      string[] v;
+      int paramType;
+      int intValue;
+      int intValue2;
+      double doubleValue;
+      double doubleValue2;
+      string[] parts;
 
-      if (!cometParams.TryGetValue(param.Name, out pType)) pType = -1;
+      if (!paramValueTypes.TryGetValue(param.Name, out paramType)) paramType = -1;
 
-      switch (pType)
+      switch (paramType)
       {
         case 0:
-          if (int.TryParse(param.Value, out iVal))
+          if (int.TryParse(param.Value, out intValue))
           {
-            return comet.SetParam(param.Name, param.Value, iVal);
+            return comet.SetParam(param.Name, param.Value, intValue);
           }
           break;
         case 1:
-          if (double.TryParse(param.Value, out dVal))
+          if (double.TryParse(param.Value, out doubleValue))
           {
-            return comet.SetParam(param.Name, param.Value, dVal);
+            return comet.SetParam(param.Name, param.Value, doubleValue);
           }
           break;
         case 2:
           return comet.SetParam(param.Name, param.Value, param.Value);
         case 3:
-          v = param.Value.Split(' ');
-          if (v.Length == 8)
+          parts = param.Value.Split(' ');
+          if (parts.Length == 8)
           {
             var varModsWrapper = new VarModsWrapper();
-            varModsWrapper.set_VarModMass(double.Parse(v[0]));
-            varModsWrapper.set_VarModChar(v[1]);
-            varModsWrapper.set_BinaryMod(int.Parse(v[2]));
-            varModsWrapper.set_MaxNumVarModAAPerMod(int.Parse(v[3]));
-            varModsWrapper.set_VarModTermDistance(int.Parse(v[4]));
-            varModsWrapper.set_WhichTerm(int.Parse(v[5]));
-            varModsWrapper.set_RequireThisMod(int.Parse(v[6]));
-            varModsWrapper.set_VarNeutralLoss(double.Parse(v[7]));
+            varModsWrapper.set_VarModMass(double.Parse(parts[0]));
+            varModsWrapper.set_VarModChar(parts[1]);
+            varModsWrapper.set_BinaryMod(int.Parse(parts[2]));
+            varModsWrapper.set_MaxNumVarModAAPerMod(int.Parse(parts[3]));
+            varModsWrapper.set_VarModTermDistance(int.Parse(parts[4]));
+            varModsWrapper.set_WhichTerm(int.Parse(parts[5]));
+            varModsWrapper.set_RequireThisMod(int.Parse(parts[6]));
+            varModsWrapper.set_VarNeutralLoss(double.Parse(parts[7]));
             return comet.SetParam(param.Name, param.Value, varModsWrapper);
           }
           break;
         case 4:
-          v = param.Value.Split(' ');
-          if (v.Length == 2)
+          parts = param.Value.Split(' ');
+          if (parts.Length == 2)
           {
-            if (Int32.TryParse(v[0], out iVal) && Int32.TryParse(v[1], out iVal2))
+            if (Int32.TryParse(parts[0], out intValue) && Int32.TryParse(parts[1], out intValue2))
             {
               IntRange intRange = new IntRange();
-              intRange.set_iStart(iVal);
-              intRange.set_iEnd(iVal2);
+              intRange.set_iStart(intValue);
+              intRange.set_iEnd(intValue2);
               return comet.SetParam(param.Name, param.Value, intRange);
             }
           }
           break;
         case 5:
-          v = param.Value.Split(' ');
-          if (v.Length == 2)
+          parts = param.Value.Split(' ');
+          if (parts.Length == 2)
           {
-            if (double.TryParse(v[0], out dVal) && double.TryParse(v[1], out dVal2))
+            if (double.TryParse(parts[0], out doubleValue) && double.TryParse(parts[1], out doubleValue2))
             {
               DoubleRange doubleRange = new DoubleRange();
-              doubleRange.set_dStart(dVal);
-              doubleRange.set_dEnd(dVal2);
+              doubleRange.set_dStart(doubleValue);
+              doubleRange.set_dEnd(doubleValue2);
               return comet.SetParam(param.Name, param.Value, doubleRange);
             }
           }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -12,6 +12,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows.Forms;
@@ -22,124 +23,163 @@ using TelescopeSharp;
 using ThermoFisher.CommonCore.Data;
 using ThermoFisher.CommonCore.Data.Business;
 using ThermoFisher.CommonCore.Data.Interfaces;
-using static System.Net.WebRequestMethods;
 
 namespace TelescopeRTS
 {
 
+  // Main window for the real-time-search (RTS) demo: lets the user pick a search-engine
+  // params file (Telescope or Comet) and a Thermo raw file, then streams the raw file's
+  // MS/MS spectra at a configurable rate to simulate a live acquisition feed while a pool
+  // of worker threads searches each scan and the UI reports throughput/timing statistics.
   public partial class Form1 : Form
   {
-    Telescope TS;
-    CometSearchManagerWrapper CS;
+    // Native Telescope search engine instance (used when "Telescope" is the selected search engine).
+    Telescope telescope;
+    // Comet search engine instance, accessed through the managed CometWrapper (used when "Comet" is selected).
+    CometSearchManagerWrapper cometSearchManager;
 
+    // MS/MS spectra loaded from the selected raw file, filtered to those eligible for searching.
     List<Spectrum> spectra = new List<Spectrum>();
-    int count = 0;
+    // Number of spectra streamed/queued so far during the current run.
+    int queuedScanCount = 0;
 
-    TaskFactory tf = new TaskFactory();
+    TaskFactory taskFactory = new TaskFactory();
 
-    object lockObject = new object();
-    object lockResult = new object();
+    // Guards activeThreadCount (slot claim/release itself is handled by
+    // searchSlotSemaphore/freeSearchSlots below, not this lock).
+    object threadLock = new object();
+    // Guards searchResults and the aggregate timing statistics below.
+    object resultsLock = new object();
 
-    int threadCount = 20;
-    bool[] threads = new bool[20];
+    // Number of concurrent search worker "slots": user-configurable (numThreadCount) for
+    // Telescope, always 1 for Comet (its search manager is not safe to call concurrently).
+    int maxConcurrentThreads = 20;
+    // Bounds concurrent search work to maxConcurrentThreads; a permit becomes available
+    // the instant a slot is released, so awaiting it needs no polling. Recreated at the
+    // start of each run to match that run's maxConcurrentThreads.
+    SemaphoreSlim searchSlotSemaphore = new SemaphoreSlim(0);
+    // Pool of available per-thread slot indices (0..maxConcurrentThreads-1), handed out
+    // in SpectrumMonitor and returned by RunSearchLoop when a slot's chain of scans
+    // finishes. The index itself matters: Telescope's native Search() uses it to pick a
+    // per-slot scratch buffer, so two concurrent searches must never share one.
+    ConcurrentQueue<int> freeSearchSlots = new ConcurrentQueue<int>();
+    // Every task SpectrumMonitor dispatches (one per slot hand-off, running RunSearchLoop),
+    // so a run can wait for all of them - and everything they chain onto themselves - to
+    // truly finish before it's considered complete. Without this, a straggler from one run
+    // can still be mid-search when the next run recreates searchSlotSemaphore/freeSearchSlots,
+    // and its eventual slot release lands in the new run's pool instead of the old one -
+    // handing that slot index out twice within the new run and corrupting both searches.
+    ConcurrentBag<Task> dispatchedSearchTasks = new ConcurrentBag<Task>();
 
-    double matchTime = 0;
-    int matchCount = 0;
-    double allTime = 0;
-    int allCount = 0;
-    double lagTime = 0;
-    int lagCount = 0;
-    double minMatchTime = 0;
-    double maxMatchTime = 0;
-    List<TResult> results = new List<TResult>();
-    
-    int curPage = 1;
-    int maxPage = 1;
-    int threadUse = 0;
+    // Aggregate timing/counters used to compute the run statistics shown in the UI.
+    double sumMatchedSearchTime = 0;
+    int matchedScanCount = 0;
+    double sumAllSearchTime = 0;
+    int allProcessedCount = 0;
+    double sumLagTime = 0;
+    int lagSampleCount = 0;
+    double minSearchTime = 0;
+    double maxSearchTime = 0;
+    List<TResult> searchResults = new List<TResult>();
 
-    bool doneQueueing = false;
+    // Paging state for the results display (rtbResults), 20 results per page.
+    int currentResultsPage = 1;
+    int maxResultsPage = 1;
+    int activeThreadCount = 0;
 
     RunInfo runInfo = new RunInfo();
 
-    Stopwatch globalWatch = new Stopwatch(); 
-    ConcurrentQueue<ScanQueueItem> scanQueue = new ConcurrentQueue<ScanQueueItem>();
+    // Tracks elapsed time since the current run started, used to timestamp queued scans
+    // and to compute overall search/queueing durations.
+    Stopwatch runStopwatch = new Stopwatch();
+    // Producer/consumer hand-off for queued scans: the streaming loop writes, SpectrumMonitor
+    // reads via ReadAllAsync (and worker tasks read directly via TryRead to grab the next
+    // scan without going through the monitor). Unlike a plain ConcurrentQueue, awaiting the
+    // reader is a true signal - no fixed-interval polling to notice a newly queued item.
+    // Recreated at the start of each run since Complete() is a one-way, one-shot signal.
+    Channel<ScanQueueItem> scanChannel = Channel.CreateUnbounded<ScanQueueItem>();
 
     public Form1()
     {
       InitializeComponent();
-      for (int i = 0; i < threadCount; i++) threads[i] = false;
-      searchListBox.SelectedIndex = 0;
+      lstSearchEngine.SelectedIndex = 0;
     }
 
-    private void button1_Click(object sender, EventArgs e)
+    // Prompts for a Telescope .params file (or a Comet params file, depending on the
+    // selected search engine) and initializes the corresponding search engine.
+    private void btnSelectParams_Click(object sender, EventArgs e)
     {
-      button1.Enabled = false;
-      searchListBox.Enabled = false;
-      openFileDialog1 = new OpenFileDialog();
-      openFileDialog1.Filter = "Telescope Params (*.params)|*.params|All Files (*.*)|*.*";
-      if (openFileDialog1.ShowDialog() == DialogResult.OK) // For Windows Forms
+      btnSelectParams.Enabled = false;
+      lstSearchEngine.Enabled = false;
+      fileDialog = new OpenFileDialog();
+      fileDialog.Filter = "Telescope Params (*.params)|*.params|All Files (*.*)|*.*";
+      if (fileDialog.ShowDialog() == DialogResult.OK) // For Windows Forms
       {
-        label1.Text = "initializing...please be patient, may take up to several minutes...";
-        label1.Update();
+        lblParamsStatus.Text = "initializing...please be patient, may take up to several minutes...";
+        lblParamsStatus.Update();
 
-        string dbFile = openFileDialog1.FileName;
+        string dbFile = fileDialog.FileName;
 
-        if (searchListBox.SelectedIndex == 0)
+        if (lstSearchEngine.SelectedIndex == 0)
         {
-          TS = new Telescope();
-          TS.Init(dbFile);
+          telescope = new Telescope();
+          telescope.Init(dbFile);
 
-          runInfo.peptidoforms = TS.GetPeptidoformCount();
-          runInfo.pepMemory = TS.GetMemUse(true);
-          runInfo.memory = TS.GetMemUse(false);
-          threadCount = 20;
+          runInfo.peptidoforms = telescope.GetPeptidoformCount();
+          runInfo.pepMemory = telescope.GetMemUse(true);
+          runInfo.memory = telescope.GetMemUse(false);
+          maxConcurrentThreads = 20;
         }
         else
         {
-          CS = new CometSearchManagerWrapper();
+          cometSearchManager = new CometSearchManagerWrapper();
           CometParamsParser cometParams = new CometParamsParser();
           cometParams.ReadFile(dbFile);
 
           foreach (ParamTuple param in cometParams.paramTuples)
           {
-            if (!cometParams.SetParam(CS, param))
+            if (!cometParams.SetParam(cometSearchManager, param))
             {
               Log("Comet::InitializeSearch() called, but failed to set '" + param.Name + "' parameter to '" + param.Value + "'.");
             }
           }
 
-          if (!cometParams.SetEnzyme(CS, "Trypsin KR P 1 1"))
+          if (!cometParams.SetEnzyme(cometSearchManager, "Trypsin KR P 1 1"))
           {
             Log("Comet::InitializeSearch() called, but failed to SetEnzyme.");
           }
 
-          CS.InitializeSingleSpectrumSearch();
+          cometSearchManager.InitializeSingleSpectrumSearch();
           Log("Comet::InitializeSearch() success.");
-          threadCount = 1;
+          maxConcurrentThreads = 1;
         }
 
-        label1.Text = "Ready: " + dbFile;
-        button2.Enabled = true;
+        runInfo.searchAlg = lstSearchEngine.GetItemText(lstSearchEngine.SelectedItem);
+        lblParamsStatus.Text = "Ready: " + dbFile;
+        btnSelectRaw.Enabled = true;
       }
       else
       {
-        searchListBox.Enabled = true;
-        button1.Enabled = true;
+        lstSearchEngine.Enabled = true;
+        btnSelectParams.Enabled = true;
       }
     }
 
-    private void button2_Click(object sender, EventArgs e)
+    // Prompts for a Thermo .raw file, reads MS2 spectra from it (filtering out ones that
+    // are too sparse, unassigned precursor charge, or outside the expected mass range),
+    // and stores them for the run.
+    private void btnSelectRaw_Click(object sender, EventArgs e)
     {
-      button2.Enabled = false;
-      openFileDialog1 = new OpenFileDialog();
-      openFileDialog1.Filter = "Thermo RAW (*.raw)|*.raw|All Files (*.*)|*.*";
-      if (openFileDialog1.ShowDialog() == DialogResult.OK) // For Windows Forms
+      btnSelectRaw.Enabled = false;
+      fileDialog = new OpenFileDialog();
+      fileDialog.Filter = "Thermo RAW (*.raw)|*.raw|All Files (*.*)|*.*";
+      if (fileDialog.ShowDialog() == DialogResult.OK) // For Windows Forms
       {
-        label2.Text = "reading...";
-        label2.Update();
+        lblRawStatus.Text = "reading...";
+        lblRawStatus.Update();
 
         FileReader fr = new FileReader();
-        Spectrum s = fr.ReadSpectrum(openFileDialog1.FileName);
+        Spectrum s = fr.ReadSpectrum(fileDialog.FileName);
         while (s.ScanNumber > 0)
         {
           if (s.MsLevel != 2)
@@ -166,71 +206,77 @@ namespace TelescopeRTS
           spectra.Add(s);
           s = fr.ReadSpectrum();
         }
-        label2.Text = "Ready: " + spectra.Count + " MS/MS scans from " + openFileDialog1.FileName;
+        lblRawStatus.Text = "Ready: " + spectra.Count + " MS/MS scans from " + fileDialog.FileName;
         runInfo.scanCount = spectra.Count;
+        runInfo.dataFile = fileDialog.FileName;
 
-        button3.Enabled = true;
-        numericUpDown1.Enabled = true;
+        btnRun.Enabled = true;
+        numScanRate.Enabled = true;
       }
       else
       {
-        button2.Enabled = true;
+        btnSelectRaw.Enabled = true;
       }
     }
 
-    private async void button3_Click(object sender, EventArgs e)
+    // Streams the loaded spectra at the user-specified rate (numScanRate, in scans/second),
+    // simulating a real-time acquisition feed, while a pool of worker tasks (SpectrumMonitor)
+    // pulls scans off the queue and searches them as they arrive.
+    private async void btnRun_Click(object sender, EventArgs e)
     {
-      numericUpDown1.Enabled = false;
-      button3.Enabled = false;
-      button4.Enabled = true;
-      nudThreads.Enabled = false;
+      numScanRate.Enabled = false;
+      btnRun.Enabled = false;
+      btnStop.Enabled = true;
+      numThreadCount.Enabled = false;
 
-      count = 0;
+      queuedScanCount = 0;
       //richTextBox1.Text = string.Empty;
-      results.Clear();
-      curPage = 1;
-      maxPage = 1;
+      searchResults.Clear();
+      currentResultsPage = 1;
+      maxResultsPage = 1;
 
       runInfo.Clear();
-      runInfo.Hz = (int)numericUpDown1.Value;
+      runInfo.Hz = (int)numScanRate.Value;
 
-      double interval = 1.0 / (int)numericUpDown1.Value * 1000; //milliseconds
+      double interval = 1.0 / (int)numScanRate.Value * 1000; //milliseconds
       long frequency = Stopwatch.Frequency;
-      long tpm = frequency / 1000; //ticks-per-millisecond.
+      long ticksPerMillisecond = frequency / 1000;
 
-      allCount = 0;
-      matchCount = 0;
-      allTime = 0;
-      matchTime = 0;
-      lagTime = 0;
-      lagCount = 0;
-      minMatchTime = 0;
-      maxMatchTime = 0;
+      allProcessedCount = 0;
+      matchedScanCount = 0;
+      sumAllSearchTime = 0;
+      sumMatchedSearchTime = 0;
+      sumLagTime = 0;
+      lagSampleCount = 0;
+      minSearchTime = 0;
+      maxSearchTime = 0;
 
-      if (searchListBox.SelectedIndex == 0)
+      if (lstSearchEngine.SelectedIndex == 0)
       {
-        threadCount = (int)nudThreads.Value;
+        maxConcurrentThreads = (int)numThreadCount.Value;
       }
       else
       {
-        threadCount = 1;
+        maxConcurrentThreads = 1;
       }
-      for (int a = 0; a < threadCount; a++) threads[a] = false;
-      threadUse = 0;
+      searchSlotSemaphore = new SemaphoreSlim(maxConcurrentThreads, maxConcurrentThreads);
+      freeSearchSlots = new ConcurrentQueue<int>(Enumerable.Range(0, maxConcurrentThreads));
+      dispatchedSearchTasks = new ConcurrentBag<Task>();
+      activeThreadCount = 0;
 
-      System.Timers.Timer myTimer = new System.Timers.Timer(500);
-      myTimer.Elapsed += UpdateStatsEvent;
-      myTimer.AutoReset = true;
-      myTimer.Enabled = true;
+      System.Timers.Timer statsTimer = new System.Timers.Timer(500);
+      statsTimer.Elapsed += UpdateStatsEvent;
+      statsTimer.AutoReset = true;
+      statsTimer.Enabled = true;
 
-      doneQueueing = false;
-      globalWatch.Start();
+      scanChannel = Channel.CreateUnbounded<ScanQueueItem>();
+      runStopwatch.Start();
 
       //Start the spectrum monitor: this looks for spectra waiting to be passed to threads
-      Task monTask = Task.Run(SpectrumMonitor);
+      Task monitorTask = Task.Run(SpectrumMonitor);
 
       //Start the spectrum streamer: this queues up spectra at user-defined intervals
-      long searchTime = 0;
+      long searchStartTicks = 0;
       await Task.Run(() =>
       {
         Stopwatch stopwatch = new Stopwatch();
@@ -238,7 +284,7 @@ namespace TelescopeRTS
         long startTicks = stopwatch.ElapsedTicks;
         long lastTicks = startTicks;
         long elapsedTicks = 0;
-        searchTime = globalWatch.ElapsedTicks;
+        searchStartTicks = runStopwatch.ElapsedTicks;
 
         while (true)
         {
@@ -246,13 +292,13 @@ namespace TelescopeRTS
           elapsedTicks += currentTicks - lastTicks;
           lastTicks = currentTicks;
 
-          if (elapsedTicks >= tpm * interval)
+          if (elapsedTicks >= ticksPerMillisecond * interval)
           {
-            elapsedTicks -= (long)(tpm * interval);
-            if (count < spectra.Count)
+            elapsedTicks -= (long)(ticksPerMillisecond * interval);
+            if (queuedScanCount < spectra.Count)
             {
               //Queue up the scan
-              scanQueue.Enqueue(new ScanQueueItem(count++, globalWatch.ElapsedTicks));
+              scanChannel.Writer.TryWrite(new ScanQueueItem(queuedScanCount++, runStopwatch.ElapsedTicks));
             }
             else break;
             //AnalyzeSpectrum();
@@ -261,104 +307,124 @@ namespace TelescopeRTS
 
         long endTicks = stopwatch.ElapsedTicks;
         elapsedTicks += endTicks - startTicks;
-        lock (lockResult)
+        lock (resultsLock)
         {
           runInfo.queueTime = (double)elapsedTicks / frequency * 1000;
         }
-        doneQueueing = true;
+        scanChannel.Writer.Complete();
       });
       Task.WaitAll();
-      monTask.Wait();
-      long searchElapsedTicks =globalWatch.ElapsedTicks - searchTime;
-      lock (lockResult)
+      monitorTask.Wait();
+      // Wait for every dispatched slot's full chain of scans (see RunSearchLoop) to
+      // actually finish - not just for the queue to be drained - before the run is
+      // considered complete, so no straggler can still be running when the next run
+      // recreates searchSlotSemaphore/freeSearchSlots.
+      await Task.WhenAll(dispatchedSearchTasks);
+      long searchElapsedTicks = runStopwatch.ElapsedTicks - searchStartTicks;
+      lock (resultsLock)
       {
         runInfo.searchTime = (double)searchElapsedTicks / frequency * 1000;
       }
 
-      Log("Done queueing spectra: " + scanQueue.Count.ToString());
+      Log("Done queueing spectra.");
 
-      myTimer.Stop();
-      myTimer.Dispose();
+      statsTimer.Stop();
+      statsTimer.Dispose();
 
-      globalWatch.Stop();
+      runStopwatch.Stop();
       UpdateStats();
       Log(runInfo.Report());
 
-      numericUpDown1.Enabled = true;
-      button3.Enabled = true;
-      button4.Enabled = false;
-      nudThreads.Enabled = true;
+      numScanRate.Enabled = true;
+      btnRun.Enabled = true;
+      btnStop.Enabled = false;
+      numThreadCount.Enabled = true;
     }
 
+    // Hands queued scans off to worker tasks as both a scan and a free search slot
+    // become available, until scanChannel is completed and drained. Both waits
+    // (for a new scan, and for a free slot) are true async signals - awaiting
+    // scanChannel.Reader.ReadAllAsync() resumes the instant a scan is written, and
+    // searchSlotSemaphore.WaitAsync() resumes the instant a slot is released - so
+    // there is no fixed-interval polling anywhere in this hand-off. Every dispatched
+    // task is recorded in dispatchedSearchTasks so btnRun_Click can wait for the
+    // entire run to truly finish, not just for scanChannel to be drained.
     private async Task SpectrumMonitor()
     {
-      while (!doneQueueing || !scanQueue.IsEmpty)
+      await foreach (ScanQueueItem item in scanChannel.Reader.ReadAllAsync())
       {
-        int tIndex = -1;
-        lock (lockObject)
+        await searchSlotSemaphore.WaitAsync();
+        freeSearchSlots.TryDequeue(out int slotIndex);
+        lock (threadLock)
         {
-          for (int a = 0; a < threadCount; a++)
-          {
-            if (!threads[a])
-            {
-              tIndex = a;
-              threads[a] = true;
-              threadUse++;
-              break;
-            }
-          }
+          activeThreadCount++;
         }
 
-        if (tIndex > -1)
-        {
-          //if thread was available, score the next scan in the queue, otherwise return the thread to the pool
-          if (scanQueue.TryDequeue(out ScanQueueItem res))
-          {
-            if (searchListBox.SelectedIndex == 0)
-            {
-              Task t = tf.StartNew(() => ScoreSpectrum(tIndex, res));
-            }
-            else
-            {
-              Task t = tf.StartNew(() => ScoreCometSpectrum(tIndex, res));
-            }
-          }
-          else
-          {
-            lock (lockObject)
-            {
-              threads[tIndex] = false;
-              threadUse--;
-            }
-          }
-        }
-
-        //wait 5ms before checking for more spectra
-        await Task.Delay(1);
+        // Explicit local copies before the closure captures them, so there is no ambiguity
+        // about per-iteration freshness inside an async state machine's loop.
+        int capturedSlotIndex = slotIndex;
+        ScanQueueItem capturedItem = item;
+        Task t = taskFactory.StartNew(() => RunSearchLoop(capturedSlotIndex, capturedItem));
+        dispatchedSearchTasks.Add(t);
       }
     }
 
-    private void Log(string msg)
+    // Runs for the lifetime of one search slot: scores the given scan, then keeps
+    // pulling and scoring the next available scan on this same task (reusing the same
+    // threadIndex) until none remain, only then returning the slot to the pool. Looping
+    // in place - rather than starting a new Task per chained scan, as before - means the
+    // task SpectrumMonitor dispatches doesn't complete until every scan chained onto this
+    // slot is truly finished, so awaiting it is a reliable "is this slot done" signal.
+    private void RunSearchLoop(int threadIndex, ScanQueueItem item)
     {
-      rtbMessage.AppendText(msg + Environment.NewLine);
+      while (true)
+      {
+        if (lstSearchEngine.SelectedIndex == 0)
+        {
+          ScoreSpectrum(threadIndex, item);
+        }
+        else
+        {
+          ScoreCometSpectrum(threadIndex, item);
+        }
+
+        if (!scanChannel.Reader.TryRead(out ScanQueueItem nextItem)) break;
+        item = nextItem;
+      }
+
+      lock (threadLock)
+      {
+        if (activeThreadCount > runInfo.maxThreadCount) runInfo.maxThreadCount = activeThreadCount;
+        activeThreadCount--;
+      }
+      freeSearchSlots.Enqueue(threadIndex);
+      searchSlotSemaphore.Release();
     }
 
-    private void ScoreCometSpectrum(int tIndex, ScanQueueItem sci)
+    // Appends a line to the log/message panel (rtbLog).
+    private void Log(string msg)
+    {
+      rtbLog.AppendText(msg + Environment.NewLine);
+    }
+
+    // Searches one spectrum against the Comet engine and records timing/result stats,
+    // then either picks up the next queued scan on this same thread or frees the slot.
+    private void ScoreCometSpectrum(int threadIndex, ScanQueueItem item)
     {
       long frequency = Stopwatch.Frequency;
       TResult res = new TResult();
-      res.waitTime = ((double)(globalWatch.ElapsedTicks - sci.ticks)) / frequency * 1000000;
-      
-      Stopwatch lagwatch = new Stopwatch();
-      lagwatch.Start();
+      res.waitTime = ((double)(runStopwatch.ElapsedTicks - item.queuedAtTicks)) / frequency * 1000000;
+
+      Stopwatch lagStopwatch = new Stopwatch();
+      lagStopwatch.Start();
 
       List<string> peptideSequences = new List<string>();
       List<string> proteinIdentifiers = new List<string>();
       List<List<FragmentWrapper>> matchedFragments;
       List<ScoreWrapper> searchScores;
 
-      bool bSearch = false;
-      Spectrum s = spectra[sci.scanIndex];
+      bool matched = false;
+      Spectrum s = spectra[item.scanIndex];
       double[] mz = new double[s.Count];
       double[] intensity = new double[s.Count];
       int i = 0;
@@ -368,27 +434,27 @@ namespace TelescopeRTS
         intensity[i++] = p.Intensity;
       }
 
-      double preMz = 0;
-      int preZ = 0;
-      double dt = 0;
-      double dtLag = 0;
- 
+      double precursorMz = 0;
+      int precursorCharge = 0;
+      double searchTimeMicros = 0;
+      double lagTimeMicros = 0;
+
       res.scanNumber = s.ScanNumber;
       if (s.Precursors.Count > 0)
       {
-        preMz = s.Precursors[0].MonoisotopicMz;
-        if (preMz == 0) preMz = s.Precursors[0].IsolationMz;
-        preZ = s.Precursors[0].Charge;
+        precursorMz = s.Precursors[0].MonoisotopicMz;
+        if (precursorMz == 0) precursorMz = s.Precursors[0].IsolationMz;
+        precursorCharge = s.Precursors[0].Charge;
       }
-      if (preMz == 0) goto FREETHREAD;
+      if (precursorMz == 0) goto FREETHREAD;
 
-      bSearch = true;
-      Stopwatch stopwatch = new Stopwatch();
-      stopwatch.Start();
-      bool searchSuccess = CS.DoSingleSpectrumSearchMultiResults(
+      matched = true;
+      Stopwatch searchStopwatch = new Stopwatch();
+      searchStopwatch.Start();
+      bool searchSuccess = cometSearchManager.DoSingleSpectrumSearchMultiResults(
           1,
-          preZ,
-          preMz,
+          precursorCharge,
+          precursorMz,
           mz,
           intensity,
           s.Count,
@@ -396,9 +462,9 @@ namespace TelescopeRTS
           out proteinIdentifiers,
           out matchedFragments,
           out searchScores);
-      stopwatch.Stop();
-      dt = (double)stopwatch.ElapsedTicks / frequency * 1000000;
-      res.searchTime = dt;
+      searchStopwatch.Stop();
+      searchTimeMicros = (double)searchStopwatch.ElapsedTicks / frequency * 1000000;
+      res.searchTime = searchTimeMicros;
 
       if (searchSuccess && searchScores.Count > 0)
       {
@@ -408,73 +474,52 @@ namespace TelescopeRTS
       }
 
     FREETHREAD:
-      lagwatch.Stop();
-      dtLag = (double)lagwatch.ElapsedTicks / frequency * 1000000;
+      lagStopwatch.Stop();
+      lagTimeMicros = (double)lagStopwatch.ElapsedTicks / frequency * 1000000;
 
-      lock (lockResult)
+      lock (resultsLock)
       {
-        allCount++;
-        allTime += dt;
-        lagTime += dtLag;
-        lagCount++;
-        if (bSearch)
+        allProcessedCount++;
+        sumAllSearchTime += searchTimeMicros;
+        sumLagTime += lagTimeMicros;
+        lagSampleCount++;
+        if (matched)
         {
-          matchCount++;
-          matchTime += dt;
-          if (minMatchTime == 0)
+          matchedScanCount++;
+          sumMatchedSearchTime += searchTimeMicros;
+          if (minSearchTime == 0)
           {
-            minMatchTime = dt;
-            maxMatchTime = dt;
+            minSearchTime = searchTimeMicros;
+            maxSearchTime = searchTimeMicros;
           }
           else
           {
-            if (dt < minMatchTime) minMatchTime = dt;
-            if (dt > maxMatchTime) maxMatchTime = dt;
+            if (searchTimeMicros < minSearchTime) minSearchTime = searchTimeMicros;
+            if (searchTimeMicros > maxSearchTime) maxSearchTime = searchTimeMicros;
           }
-          res.lagTime = dtLag;
+          res.lagTime = lagTimeMicros;
         }
-        results.Add(res);
+        searchResults.Add(res);
         runInfo.sumWaitTime += res.waitTime;
-        runInfo.sumSearchTime += dt;
+        runInfo.sumSearchTime += searchTimeMicros;
         runInfo.scansSearched++;
 
       }
-
-      //Try grabbing another scan, or free the thread if there is none.
-      if (scanQueue.TryDequeue(out ScanQueueItem sq))
-      {
-        if (searchListBox.SelectedIndex == 0)
-        {
-          Task t = tf.StartNew(() => ScoreSpectrum(tIndex, sq));
-        }
-        else
-        {
-          Task t = tf.StartNew(() => ScoreCometSpectrum(tIndex, sq));
-        }
-      }
-      else
-      {
-        lock (lockObject)
-        {
-          if (threadUse > runInfo.maxThreadCount) runInfo.maxThreadCount = threadUse;
-          threads[tIndex] = false;
-          threadUse--;
-        }
-      }
-
     }
 
-    private void ScoreSpectrum(int tIndex, ScanQueueItem sci)
+    // Searches one spectrum against the Telescope engine and records timing/result stats,
+    // then either picks up the next queued scan on this same thread or frees the slot.
+    private void ScoreSpectrum(int threadIndex, ScanQueueItem item)
     {
       long frequency = Stopwatch.Frequency;
       TResult res = new TResult();
-      res.waitTime =((double)(globalWatch.ElapsedTicks - sci.ticks)) / frequency * 1000000;
+      res.waitTime = ((double)(runStopwatch.ElapsedTicks - item.queuedAtTicks)) / frequency * 1000000;
 
-      Stopwatch lagwatch = new Stopwatch();
-      lagwatch.Start();
+      Stopwatch lagStopwatch = new Stopwatch();
+      lagStopwatch.Start();
 
-      bool bSearch = false;
-      Spectrum s = spectra[sci.scanIndex];
+      bool matched = false;
+      Spectrum s = spectra[item.scanIndex];
       double[] mz = new double[s.Count];
       double[] intensity = new double[s.Count];
       int i = 0;
@@ -484,97 +529,106 @@ namespace TelescopeRTS
         intensity[i++] = p.Intensity;
       }
 
-      double preMz = 0;
-      int preZ = 0;
-      double dt = 0;
-      double dtLag = 0;
+      double precursorMz = 0;
+      int precursorCharge = 0;
+      double searchTimeMicros = 0;
+      double lagTimeMicros = 0;
 
       res.scanNumber = s.ScanNumber;
       if (s.Precursors.Count > 0)
       {
-        preMz = s.Precursors[0].MonoisotopicMz;
-        if (preMz == 0) preMz = s.Precursors[0].IsolationMz;
-        preZ = s.Precursors[0].Charge;
+        precursorMz = s.Precursors[0].MonoisotopicMz;
+        if (precursorMz == 0) precursorMz = s.Precursors[0].IsolationMz;
+        precursorCharge = s.Precursors[0].Charge;
       }
-      if (preMz == 0) goto FREETHREAD;
+      if (precursorMz == 0) goto FREETHREAD;
 
-      bSearch = true;
-      Stopwatch stopwatch = new Stopwatch();
-      stopwatch.Start();
-      TScore score = TS.Search(tIndex, mz, intensity, preMz, preZ);
-      stopwatch.Stop();
-      dt = (double)stopwatch.ElapsedTicks / frequency * 1000000;
-      res.searchTime = dt;
+      matched = true;
+      Stopwatch searchStopwatch = new Stopwatch();
+      searchStopwatch.Start();
+      TScore score = telescope.Search(threadIndex, mz, intensity, precursorMz, precursorCharge);
+      searchStopwatch.Stop();
+      searchTimeMicros = (double)searchStopwatch.ElapsedTicks / frequency * 1000000;
+      res.searchTime = searchTimeMicros;
       res.peptide = score.peptide;
       res.protein = score.protein;
       res.score = score.score;
 
     FREETHREAD:
-      lagwatch.Stop();
-      dtLag = (double)lagwatch.ElapsedTicks / frequency * 1000000;
+      lagStopwatch.Stop();
+      lagTimeMicros = (double)lagStopwatch.ElapsedTicks / frequency * 1000000;
 
-      lock (lockResult)
+      lock (resultsLock)
       {
-        allCount++;
-        allTime += dt;
-        lagTime += dtLag;
-        lagCount++;
-        if (bSearch)
+        allProcessedCount++;
+        sumAllSearchTime += searchTimeMicros;
+        sumLagTime += lagTimeMicros;
+        lagSampleCount++;
+        if (matched)
         {
-          matchCount++;
-          matchTime += dt;
-          if (minMatchTime == 0)
+          matchedScanCount++;
+          sumMatchedSearchTime += searchTimeMicros;
+          if (minSearchTime == 0)
           {
-            minMatchTime = dt;
-            maxMatchTime = dt;
+            minSearchTime = searchTimeMicros;
+            maxSearchTime = searchTimeMicros;
           }
           else
           {
-            if (dt < minMatchTime) minMatchTime = dt;
-            if (dt > maxMatchTime) maxMatchTime = dt;
+            if (searchTimeMicros < minSearchTime) minSearchTime = searchTimeMicros;
+            if (searchTimeMicros > maxSearchTime) maxSearchTime = searchTimeMicros;
           }
-          res.lagTime = dtLag;
+          res.lagTime = lagTimeMicros;
         }
-        results.Add(res);
+        searchResults.Add(res);
         runInfo.sumWaitTime += res.waitTime;
-        runInfo.sumSearchTime += dt;
+        runInfo.sumSearchTime += searchTimeMicros;
         runInfo.scansSearched++;
 
       }
-
-      //Try grabbing another scan, or free the thread if there is none.
-      if (scanQueue.TryDequeue(out ScanQueueItem sq))
-      {
-        if (searchListBox.SelectedIndex == 0)
-        {
-          Task t = tf.StartNew(() => ScoreSpectrum(tIndex, sq));
-        }
-        else
-        {
-          Task t = tf.StartNew(() => ScoreCometSpectrum(tIndex, sq));
-        }
-      }
-      else
-      {
-        lock (lockObject)
-        {
-          if (threadUse > runInfo.maxThreadCount) runInfo.maxThreadCount = threadUse;
-          threads[tIndex] = false;
-          threadUse--;
-        }
-      }
     }
 
+    // Fixed-width header row shared by the on-screen results view and the exported log.
+    private static string FormatResultsHeader()
+    {
+      return string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", "SCAN", "TIME(us)", "DELAY(us)", "SCORE", "PEPTIDE", "PROTEIN");
+    }
+
+    // Fixed-width row for one search result, matching FormatResultsHeader's column widths.
+    private static string FormatResultRow(TResult result)
+    {
+      return string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", result.scanNumber.ToString(), result.searchTime.ToString("F2"), result.waitTime.ToString("F2"), result.score.ToString("F2"), result.peptide, result.protein);
+    }
+
+    // Tab-delimited header row for the exported results (see btnExportLog_Click).
+    private static string FormatResultsHeaderTsv()
+    {
+      return string.Join("\t", "SCAN", "TIME(us)", "DELAY(us)", "SCORE", "PEPTIDE", "PROTEIN");
+    }
+
+    // Tab-delimited row for one search result, matching FormatResultsHeaderTsv's columns.
+    private static string FormatResultRowTsv(TResult result)
+    {
+      return string.Join("\t",
+        result.scanNumber.ToString(),
+        result.searchTime.ToString("F2"),
+        result.waitTime.ToString("F2"),
+        result.score.ToString("F2"),
+        result.peptide,
+        result.protein);
+    }
+
+    // Renders one 20-row page of searchResults into rtbResults as a fixed-width table.
     private void UpdateResults()
     {
-      richTextBox1.Text = string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", "SCAN", "TIME(us)", "DELAY(us)", "SCORE", "PEPTIDE", "PROTEIN") + Environment.NewLine;
-      string str = new string('=', 95);
-      richTextBox1.Text += str + Environment.NewLine;
-      int start = (curPage - 1) * 20;
+      rtbResults.Text = FormatResultsHeader() + Environment.NewLine;
+      string separator = new string('=', 95);
+      rtbResults.Text += separator + Environment.NewLine;
+      int start = (currentResultsPage - 1) * 20;
       for (int i = start; i < start + 20; i++)
       {
-        if (i == results.Count) break;
-        richTextBox1.Text += string.Format("{0,-" + 8 + "} {1,-" + 8 + "} {2,-" + 8 + "} {3,-" + 12 + "} {4,-" + 40 + "} {5,-" + 12 + "}", results[i].scanNumber.ToString(), results[i].searchTime.ToString("F2"), results[i].waitTime.ToString("F2"),results[i].score.ToString("F2"), results[i].peptide, results[i].protein) + Environment.NewLine;
+        if (i == searchResults.Count) break;
+        rtbResults.Text += FormatResultRow(searchResults[i]) + Environment.NewLine;
       }
     }
 
@@ -583,72 +637,85 @@ namespace TelescopeRTS
       UpdateStats();
     }
 
+    // Refreshes the summary statistics labels from the current aggregate counters.
     private void UpdateStats()
     {
-      lock (lockResult)
+      lock (resultsLock)
       {
-        label7.Text = count.ToString();
-        label8.Text = matchCount.ToString();
-        label9.Text = (matchTime / matchCount).ToString("F2") + " us";
-        label14.Text = (lagTime / lagCount).ToString("F2") + " us";
-        label17.Text = minMatchTime.ToString("F2") + " us";
-        label18.Text = maxMatchTime.ToString("F2") + " us";
-        lock (lockObject)
+        lblTotalScansValue.Text = queuedScanCount.ToString();
+        lblMatchedScansValue.Text = matchedScanCount.ToString();
+        lblAvgSearchTimeValue.Text = (sumMatchedSearchTime / matchedScanCount).ToString("F2") + " us";
+        lblAvgLagTimeValue.Text = (sumLagTime / lagSampleCount).ToString("F2") + " us";
+        lblFastestSearchValue.Text = minSearchTime.ToString("F2") + " us";
+        lblSlowestSearchValue.Text = maxSearchTime.ToString("F2") + " us";
+        lock (threadLock)
         {
-          label12.Text = threadUse.ToString();
-          //label19.Text = scanQueue.Count.ToString();
+          lblActiveThreadsValue.Text = activeThreadCount.ToString();
+          //lblScansQueuedValue.Text = scanChannel.Reader.Count.ToString();
         }
 
-        maxPage = results.Count / 20 + 1;
-        label10.Text = curPage.ToString() + "/" + maxPage.ToString();
+        maxResultsPage = searchResults.Count / 20 + 1;
+        lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       }
     }
 
-    private void button4_Click(object sender, EventArgs e)
+    private void btnStop_Click(object sender, EventArgs e)
     {
       //find a good way to stop the analysis. it is currently broken.
-      button4.Enabled = false;
+      btnStop.Enabled = false;
     }
 
-    private void button5_Click(object sender, EventArgs e)
+    private void btnPagePrev_Click(object sender, EventArgs e)
     {
-      if (curPage > 1) curPage--;
-      label10.Text = curPage.ToString() + "/" + maxPage.ToString();
+      if (currentResultsPage > 1) currentResultsPage--;
+      lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       UpdateResults();
     }
 
-    private void button6_Click(object sender, EventArgs e)
+    private void btnPageNext_Click(object sender, EventArgs e)
     {
-      curPage++;
-      if (curPage > maxPage) curPage = maxPage;
-      label10.Text = curPage.ToString() + "/" + maxPage.ToString();
+      currentResultsPage++;
+      if (currentResultsPage > maxResultsPage) currentResultsPage = maxResultsPage;
+      lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       UpdateResults();
     }
 
-    private void button7_Click(object sender, EventArgs e)
+    private void btnPageForward100_Click(object sender, EventArgs e)
     {
-      curPage += 100;
-      if (curPage > maxPage) curPage = maxPage;
-      label10.Text = curPage.ToString() + "/" + maxPage.ToString();
+      currentResultsPage += 100;
+      if (currentResultsPage > maxResultsPage) currentResultsPage = maxResultsPage;
+      lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       UpdateResults();
     }
 
-    private void button8_Click(object sender, EventArgs e)
+    private void btnPageBack100_Click(object sender, EventArgs e)
     {
-      curPage -= 100;
-      if (curPage < 1) curPage = 1;
-      label10.Text = curPage.ToString() + "/" + maxPage.ToString();
+      currentResultsPage -= 100;
+      if (currentResultsPage < 1) currentResultsPage = 1;
+      lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       UpdateResults();
     }
 
-    private void button9_Click(object sender, EventArgs e)
+    // Writes the most recent run's RunInfo report, followed by the complete list of
+    // search results, to a file named after the export timestamp.
+    private void btnExportLog_Click(object sender, EventArgs e)
     {
       string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
       string fileName = $"log_{timestamp}.txt";
       using (StreamWriter sw = new StreamWriter(fileName))
       {
         sw.WriteLine(runInfo.Report());
+
+        sw.WriteLine(FormatResultsHeaderTsv());
+        lock (resultsLock)
+        {
+          foreach (TResult result in searchResults)
+          {
+            sw.WriteLine(FormatResultRowTsv(result));
+          }
+        }
       }
+      Log("Exported: " + fileName);
     }
 
   }

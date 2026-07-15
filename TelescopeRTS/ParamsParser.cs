@@ -7,12 +7,15 @@ using System.Threading.Tasks;
 
 namespace TelescopeRTS
 {
+  // A single "name = value" parameter read from a params file.
   internal class ParamTuple
   {
     public string Name { get; set; }
     public string Value { get; set; }
   }
 
+  // Reads a simple "name = value # comment" params file into a list of ParamTuples.
+  // Base class for engine-specific parsers (see CometParamsParser).
   internal class ParamsParser
   {
 
@@ -20,18 +23,20 @@ namespace TelescopeRTS
 
     public ParamsParser() { }
 
+    // Parses one line of the params file, stopping at '#' (comment) and splitting on the
+    // first '='. Returns null for blank/comment-only lines.
     private ParamTuple ParseLine(string line)
     {
       string name = string.Empty;
       string value = string.Empty;
-      bool left = true;
+      bool parsingName = true;
       for (int i = 0; i < line.Length; i++)
       {
         if (line[i] == '#') break;
-        else if (line[i] == '=') left = false;
+        else if (line[i] == '=') parsingName = false;
         else
         {
-          if (left) name += line[i];
+          if (parsingName) name += line[i];
           else value += line[i];
         }
       }

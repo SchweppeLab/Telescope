@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 
 namespace TelescopeRTS
 {
+  // Aggregated statistics for a single search run: search-space info captured once when
+  // the params file is loaded, plus run-to-run counters that reset each run (see Clear()).
   internal class RunInfo
   {
     public double memory = 0;
@@ -24,6 +26,9 @@ namespace TelescopeRTS
     public double queueTime = 0;
     public double searchTime = 0;
 
+    public string searchAlg = string.Empty;
+    public string dataFile = string.Empty;
+
     public void Clear()
     {
       Hz = 0;
@@ -36,24 +41,28 @@ namespace TelescopeRTS
       searchTime = 0;
     }
 
+    // Builds a human-readable summary of this run for the log/export.
     public string Report()
     {
-      string s = Environment.NewLine+ "========= RUN ==========" + Environment.NewLine;
-      s += "Search Peptidoforms: " + peptidoforms + Environment.NewLine;
-      s += "Peptidoform Memory: " + pepMemory + " Gb"+ Environment.NewLine;
-      s += "Index Memory: " + memory + " Gb" + Environment.NewLine;
-      s += "Scan Count: " + scanCount + Environment.NewLine;
-      s += "Speed: " + Hz + " scans per second" + Environment.NewLine;
-      s += "Realized Speed: " + scanCount / (queueTime / 1000) + " Hz" + Environment.NewLine;
+      string report = Environment.NewLine+ "========= RUN ==========" + Environment.NewLine;
+      report += "Search Algorithm: " + searchAlg + Environment.NewLine;
+      report += "Spectral Data File: " + dataFile + Environment.NewLine;
 
-      s += "Scans searched: " + scansSearched.ToString() + Environment.NewLine;
-      s += "Search time: " + searchTime/1000 + " seconds" + Environment.NewLine;
-      s += "Search Speed: " + scansSearched / (searchTime / 1000) + " Hz" + Environment.NewLine;
-      s += "Avg MS search time: " + (sumSearchTime / scansSearched).ToString() + " micro seconds" + Environment.NewLine;
-      s += "Max concurrent threads: " + maxThreadCount.ToString() + Environment.NewLine;
-      s += "Scans deferred: " + scansWaiting.ToString() + Environment.NewLine;
-      s += "Wait time: " + (sumWaitTime/ scansSearched).ToString() + " micro seconds" + Environment.NewLine;
-      return s;
+      report += "Search Peptidoforms: " + peptidoforms + Environment.NewLine;
+      report += "Peptidoform Memory: " + pepMemory + " Gb"+ Environment.NewLine;
+      report += "Index Memory: " + memory + " Gb" + Environment.NewLine;
+      report += "Scan Count: " + scanCount + Environment.NewLine;
+      report += "Speed: " + Hz + " scans per second" + Environment.NewLine;
+      report += "Realized Speed: " + scanCount / (queueTime / 1000) + " Hz" + Environment.NewLine;
+
+      report += "Scans searched: " + scansSearched.ToString() + Environment.NewLine;
+      report += "Search time: " + searchTime/1000 + " seconds" + Environment.NewLine;
+      report += "Search Speed: " + scansSearched / (searchTime / 1000) + " Hz" + Environment.NewLine;
+      report += "Avg MS search time: " + (sumSearchTime / scansSearched).ToString() + " micro seconds" + Environment.NewLine;
+      report += "Max concurrent threads: " + maxThreadCount.ToString() + Environment.NewLine;
+      report += "Scans deferred: " + scansWaiting.ToString() + Environment.NewLine;
+      report += "Wait time: " + (sumWaitTime/ scansSearched).ToString() + " micro seconds" + Environment.NewLine;
+      return report;
     }
   }
 }
