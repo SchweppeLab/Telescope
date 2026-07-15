@@ -9,6 +9,7 @@ using System.DirectoryServices;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -33,6 +34,20 @@ namespace TelescopeRTS
   // of worker threads searches each scan and the UI reports throughput/timing statistics.
   public partial class Form1 : Form
   {
+    // The workflow this form walks the user through, in order. Every control's enabled
+    // state is driven from a single SetUiState() call per transition, rather than scattered
+    // .Enabled assignments in each handler, so the UI can't drift out of sync with itself.
+    private enum AppState
+    {
+      NoAlgorithm,    // Nothing chosen yet: only the engine choice + Lock button are live.
+      AlgorithmLocked, // Engine locked in: params file selection becomes available.
+      ParamsLoaded,   // Params loaded: raw file selection becomes available.
+      ReadyToRun,     // Raw data loaded: Run becomes available; raw data may still be reloaded.
+      Running         // A run is in progress: only Stop is live.
+    }
+
+    private AppState currentState = AppState.NoAlgorithm;
+
     // Native Telescope search engine instance (used when "Telescope" is the selected search engine).
     Telescope telescope;
     // Comet search engine instance, accessed through the managed CometWrapper (used when "Comet" is selected).
@@ -70,6 +85,10 @@ namespace TelescopeRTS
     // and its eventual slot release lands in the new run's pool instead of the old one -
     // handing that slot index out twice within the new run and corrupting both searches.
     ConcurrentBag<Task> dispatchedSearchTasks = new ConcurrentBag<Task>();
+    // Signaled by btnStop_Click to stop the streaming loop from queueing further scans.
+    // Already-queued/in-flight scans are allowed to finish naturally, since the native
+    // search calls have no cancellation hook of their own. Recreated at the start of each run.
+    CancellationTokenSource runCancellation = new CancellationTokenSource();
 
     // Aggregate timing/counters used to compute the run statistics shown in the UI.
     double sumMatchedSearchTime = 0;
@@ -86,6 +105,13 @@ namespace TelescopeRTS
     int currentResultsPage = 1;
     int maxResultsPage = 1;
     int activeThreadCount = 0;
+    // Current number of scans sitting in scanChannel, waiting for a free search slot -
+    // incremented once per scan queued (streaming loop only, single-threaded) and
+    // decremented once per scan dequeued (SpectrumMonitor's foreach body and RunSearchLoop's
+    // self-feed TryRead, both potentially concurrent, hence Interlocked). Tracking this as a
+    // running counter avoids ever calling Count on the channel/queue - the peak value seen
+    // (runInfo.scansWaiting) is an exact high-water mark, not a value sampled periodically.
+    int queuedScanBacklog = 0;
 
     RunInfo runInfo = new RunInfo();
 
@@ -103,14 +129,86 @@ namespace TelescopeRTS
     {
       InitializeComponent();
       lstSearchEngine.SelectedIndex = 0;
+      Text = "TelescopeRTS v" + Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
+      SetUiState(AppState.NoAlgorithm);
+    }
+
+    // Enables/disables every workflow control for the given state in one place, so a
+    // transition can never leave the UI in a half-updated or inconsistent configuration.
+    private void SetUiState(AppState state)
+    {
+      currentState = state;
+
+      lstSearchEngine.Enabled = state == AppState.NoAlgorithm;
+      btnLockAlgorithm.Enabled = state != AppState.Running;
+      btnLockAlgorithm.Text = state == AppState.NoAlgorithm ? "Lock Algorithm" : "Unlock";
+
+      btnSelectParams.Enabled = state == AppState.AlgorithmLocked;
+      btnSelectRaw.Enabled = state == AppState.ParamsLoaded || state == AppState.ReadyToRun;
+
+      btnRun.Enabled = state == AppState.ReadyToRun;
+      btnStop.Enabled = state == AppState.Running;
+
+      bool runControlsEnabled = state == AppState.ReadyToRun;
+      numScanRate.Enabled = runControlsEnabled;
+      // Thread count only means anything for Telescope; Comet always searches single-threaded.
+      numThreadCount.Enabled = runControlsEnabled && lstSearchEngine.SelectedIndex == 0;
+    }
+
+    // Locks in the selected algorithm (enabling params selection), or - if already locked -
+    // fully unwinds the current run: frees the search engine's memory, clears loaded spectra
+    // and results, and restores the interface to its starting state.
+    private void btnLockAlgorithm_Click(object sender, EventArgs e)
+    {
+      if (currentState == AppState.NoAlgorithm)
+      {
+        Log("Algorithm locked: " + lstSearchEngine.GetItemText(lstSearchEngine.SelectedItem));
+        SetUiState(AppState.AlgorithmLocked);
+        return;
+      }
+
+      telescope?.Dispose();
+      telescope = null;
+      (cometSearchManager as IDisposable)?.Dispose();
+      cometSearchManager = null;
+
+      spectra.Clear();
+      runInfo = new RunInfo();
+      queuedScanCount = 0;
+
+      lblParamsStatus.Text = "Not Ready";
+      lblRawStatus.Text = "Not Ready";
+      numScanRate.Value = 20;
+      numThreadCount.Value = 1;
+      ClearResultsAndStats();
+
+      Log("=== Algorithm unlocked and reset. ===");
+      SetUiState(AppState.NoAlgorithm);
+    }
+
+    // Clears the results table, paging state, and summary statistics display - used both
+    // when a fresh raw file replaces previously loaded spectra and on a full unlock/reset.
+    private void ClearResultsAndStats()
+    {
+      searchResults.Clear();
+      currentResultsPage = 1;
+      maxResultsPage = 1;
+      rtbResults.Clear();
+      lblPageIndicator.Text = "0/0";
+      lblTotalScansValue.Text = "0";
+      lblMatchedScansValue.Text = "0";
+      lblAvgSearchTimeValue.Text = "0";
+      lblAvgLagTimeValue.Text = "0";
+      lblFastestSearchValue.Text = "0";
+      lblSlowestSearchValue.Text = "0";
+      lblActiveThreadsValue.Text = "0";
+      lblScansQueuedValue.Text = "0";
     }
 
     // Prompts for a Telescope .params file (or a Comet params file, depending on the
     // selected search engine) and initializes the corresponding search engine.
     private void btnSelectParams_Click(object sender, EventArgs e)
     {
-      btnSelectParams.Enabled = false;
-      lstSearchEngine.Enabled = false;
       fileDialog = new OpenFileDialog();
       fileDialog.Filter = "Telescope Params (*.params)|*.params|All Files (*.*)|*.*";
       if (fileDialog.ShowDialog() == DialogResult.OK) // For Windows Forms
@@ -156,27 +254,24 @@ namespace TelescopeRTS
 
         runInfo.searchAlg = lstSearchEngine.GetItemText(lstSearchEngine.SelectedItem);
         lblParamsStatus.Text = "Ready: " + dbFile;
-        btnSelectRaw.Enabled = true;
-      }
-      else
-      {
-        lstSearchEngine.Enabled = true;
-        btnSelectParams.Enabled = true;
+        SetUiState(AppState.ParamsLoaded);
       }
     }
 
     // Prompts for a Thermo .raw file, reads MS2 spectra from it (filtering out ones that
     // are too sparse, unassigned precursor charge, or outside the expected mass range),
-    // and stores them for the run.
+    // and stores them for the run. Replaces any previously loaded spectra and results.
     private void btnSelectRaw_Click(object sender, EventArgs e)
     {
-      btnSelectRaw.Enabled = false;
       fileDialog = new OpenFileDialog();
       fileDialog.Filter = "Thermo RAW (*.raw)|*.raw|All Files (*.*)|*.*";
       if (fileDialog.ShowDialog() == DialogResult.OK) // For Windows Forms
       {
         lblRawStatus.Text = "reading...";
         lblRawStatus.Update();
+
+        spectra.Clear();
+        ClearResultsAndStats();
 
         FileReader fr = new FileReader();
         Spectrum s = fr.ReadSpectrum(fileDialog.FileName);
@@ -210,12 +305,7 @@ namespace TelescopeRTS
         runInfo.scanCount = spectra.Count;
         runInfo.dataFile = fileDialog.FileName;
 
-        btnRun.Enabled = true;
-        numScanRate.Enabled = true;
-      }
-      else
-      {
-        btnSelectRaw.Enabled = true;
+        SetUiState(AppState.ReadyToRun);
       }
     }
 
@@ -224,16 +314,11 @@ namespace TelescopeRTS
     // pulls scans off the queue and searches them as they arrive.
     private async void btnRun_Click(object sender, EventArgs e)
     {
-      numScanRate.Enabled = false;
-      btnRun.Enabled = false;
-      btnStop.Enabled = true;
-      numThreadCount.Enabled = false;
+      SetUiState(AppState.Running);
+      runCancellation = new CancellationTokenSource();
 
       queuedScanCount = 0;
-      //richTextBox1.Text = string.Empty;
-      searchResults.Clear();
-      currentResultsPage = 1;
-      maxResultsPage = 1;
+      ClearResultsAndStats();
 
       runInfo.Clear();
       runInfo.Hz = (int)numScanRate.Value;
@@ -263,6 +348,7 @@ namespace TelescopeRTS
       freeSearchSlots = new ConcurrentQueue<int>(Enumerable.Range(0, maxConcurrentThreads));
       dispatchedSearchTasks = new ConcurrentBag<Task>();
       activeThreadCount = 0;
+      queuedScanBacklog = 0;
 
       System.Timers.Timer statsTimer = new System.Timers.Timer(500);
       statsTimer.Elapsed += UpdateStatsEvent;
@@ -286,7 +372,7 @@ namespace TelescopeRTS
         long elapsedTicks = 0;
         searchStartTicks = runStopwatch.ElapsedTicks;
 
-        while (true)
+        while (!runCancellation.IsCancellationRequested)
         {
           long currentTicks = stopwatch.ElapsedTicks;
           elapsedTicks += currentTicks - lastTicks;
@@ -299,6 +385,11 @@ namespace TelescopeRTS
             {
               //Queue up the scan
               scanChannel.Writer.TryWrite(new ScanQueueItem(queuedScanCount++, runStopwatch.ElapsedTicks));
+              // Only this loop ever increments queuedScanBacklog, so checking/updating the
+              // high-water mark here needs no extra synchronization beyond the Interlocked
+              // increment itself - decrements (from other threads) can only ever move it down.
+              int backlog = Interlocked.Increment(ref queuedScanBacklog);
+              if (backlog > runInfo.scansWaiting) runInfo.scansWaiting = backlog;
             }
             else break;
             //AnalyzeSpectrum();
@@ -326,7 +417,8 @@ namespace TelescopeRTS
         runInfo.searchTime = (double)searchElapsedTicks / frequency * 1000;
       }
 
-      Log("Done queueing spectra.");
+      if (runCancellation.IsCancellationRequested) Log("Run stopped by user.");
+      else Log("Done queueing spectra.");
 
       statsTimer.Stop();
       statsTimer.Dispose();
@@ -335,10 +427,7 @@ namespace TelescopeRTS
       UpdateStats();
       Log(runInfo.Report());
 
-      numScanRate.Enabled = true;
-      btnRun.Enabled = true;
-      btnStop.Enabled = false;
-      numThreadCount.Enabled = true;
+      SetUiState(AppState.ReadyToRun);
     }
 
     // Hands queued scans off to worker tasks as both a scan and a free search slot
@@ -353,6 +442,7 @@ namespace TelescopeRTS
     {
       await foreach (ScanQueueItem item in scanChannel.Reader.ReadAllAsync())
       {
+        Interlocked.Decrement(ref queuedScanBacklog);
         await searchSlotSemaphore.WaitAsync();
         freeSearchSlots.TryDequeue(out int slotIndex);
         lock (threadLock)
@@ -389,6 +479,7 @@ namespace TelescopeRTS
         }
 
         if (!scanChannel.Reader.TryRead(out ScanQueueItem nextItem)) break;
+        Interlocked.Decrement(ref queuedScanBacklog);
         item = nextItem;
       }
 
@@ -651,18 +742,23 @@ namespace TelescopeRTS
         lock (threadLock)
         {
           lblActiveThreadsValue.Text = activeThreadCount.ToString();
-          //lblScansQueuedValue.Text = scanChannel.Reader.Count.ToString();
         }
+        lblScansQueuedValue.Text = Volatile.Read(ref queuedScanBacklog).ToString();
 
         maxResultsPage = searchResults.Count / 20 + 1;
         lblPageIndicator.Text = currentResultsPage.ToString() + "/" + maxResultsPage.ToString();
       }
     }
 
+    // Stops the run: no further scans are queued, but scans already queued or in-flight
+    // finish naturally (the native search calls have no cancellation hook of their own).
+    // btnRun_Click's existing wind-down logic (waiting for dispatched tasks, updating
+    // stats, re-enabling controls) handles the rest identically to a normal completion.
     private void btnStop_Click(object sender, EventArgs e)
     {
-      //find a good way to stop the analysis. it is currently broken.
+      runCancellation.Cancel();
       btnStop.Enabled = false;
+      Log("Stop requested - finishing scans already queued or in progress...");
     }
 
     private void btnPagePrev_Click(object sender, EventArgs e)
