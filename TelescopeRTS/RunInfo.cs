@@ -60,7 +60,7 @@ namespace TelescopeRTS
       report += "Search Speed: " + scansSearched / (searchTime / 1000) + " Hz" + Environment.NewLine;
       report += "Avg MS search time: " + (sumSearchTime / scansSearched).ToString() + " micro seconds" + Environment.NewLine;
       report += "Max concurrent threads: " + maxThreadCount.ToString() + Environment.NewLine;
-      report += "Scans deferred: " + scansWaiting.ToString() + Environment.NewLine;
+      report += "Peak Scans Waiting: " + scansWaiting.ToString() + Environment.NewLine;
       report += "Wait time: " + (sumWaitTime/ scansSearched).ToString() + " micro seconds" + Environment.NewLine;
       return report;
     }
