@@ -1,5 +1,5 @@
-# TelescopePublic
-The staging repo for transitioning Telescope from a sandbox to a publication-ready piece of software.
+# Telescope
+A lightweight database search algorithm and sandbox designed for developing and testing real-time search for mass spectrometry-based peptide identification.
 
-# NEVER MAKE THIS REPO PUBLIC
-When it is ready to go live, create a new repo and copy over the finished code. Leave the history behind.
+# Getting Started
+
