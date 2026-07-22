@@ -9,4 +9,5 @@ Telescope requires the [MSToolkit](https://github.com/mhoopmann/mstoolkit) and [
 * TelescopeRTS is a data streamer application for testing RTS applications of Telescope. It also requires [Comet](https://github.com/UWPR/Comet).
 
 Telescope from the command line requires a parameters file as the only input. A sample parameters file is provided with the software.
+
 Example: >Telescope.exe telescope.params
