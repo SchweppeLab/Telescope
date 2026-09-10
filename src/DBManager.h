@@ -36,7 +36,7 @@ typedef struct DBMStatMad {
 
 
 /// <summary>
-/// The class wraps DBaser, a simple FASTA file parser, and manages a list of peptides obtained
+/// The class wraps the simple FASTA file parser in DB.h and manages a list of peptides obtained
 /// for database search analysis.
 /// </summary>
 class DBManager {

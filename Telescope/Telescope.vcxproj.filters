@@ -15,102 +15,102 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Telescope.cpp">
+    <ClCompile Include="..\src\Telescope.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DBManager.cpp">
+    <ClCompile Include="..\src\DBManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DB.cpp">
+    <ClCompile Include="..\src\DB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FISpectrum.cpp">
+    <ClCompile Include="..\src\FISpectrum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FastXCorr.cpp">
+    <ClCompile Include="..\src\FastXCorr.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Threading.cpp">
+    <ClCompile Include="..\src\Threading.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FIManager.cpp">
+    <ClCompile Include="..\src\FIManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FragmentIonIndex.cpp">
+    <ClCompile Include="..\src\FragmentIonIndex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TopScore.cpp">
+    <ClCompile Include="..\src\TopScore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FIMemoryManager.cpp">
+    <ClCompile Include="..\src\FIMemoryManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DataLoader.cpp">
+    <ClCompile Include="..\src\DataLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FIMask.cpp">
+    <ClCompile Include="..\src\FIMask.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ResultsExporter.cpp">
+    <ClCompile Include="..\src\ResultsExporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TelescopeManager.cpp">
+    <ClCompile Include="..\src\TelescopeManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ParamsManager.cpp">
+    <ClCompile Include="..\src\ParamsManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DBManager.h">
+    <ClInclude Include="..\src\DBManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DB.h">
+    <ClInclude Include="..\src\DB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FISpectrum.h">
+    <ClInclude Include="..\src\FISpectrum.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FastXCorr.h">
+    <ClInclude Include="..\src\FastXCorr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FIManager.h">
+    <ClInclude Include="..\src\FIManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OSSpecificThreading.h">
+    <ClInclude Include="..\src\OSSpecificThreading.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Threading.h">
+    <ClInclude Include="..\src\Threading.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadPool.h">
+    <ClInclude Include="..\src\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FragmentIonIndex.h">
+    <ClInclude Include="..\src\FragmentIonIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TopScore.h">
+    <ClInclude Include="..\src\TopScore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FIMemoryManager.h">
+    <ClInclude Include="..\src\FIMemoryManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DataLoader.h">
+    <ClInclude Include="..\src\DataLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GlobalDefinitions.h">
+    <ClInclude Include="..\src\GlobalDefinitions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="FIMask.h">
+    <ClInclude Include="..\src\FIMask.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ResultsExporter.h">
+    <ClInclude Include="..\src\ResultsExporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TelescopeManager.h">
+    <ClInclude Include="..\src\TelescopeManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ParamsManager.h">
+    <ClInclude Include="..\src\ParamsManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -117,17 +117,19 @@ void FragmentIonIndex::CalculateIndex(unsigned int start, unsigned int stop, uns
 /// Frees all index memory.
 /// </summary>
 void FragmentIonIndex::DeleteIndex() {
-	for (int a = 0;a < params->maxFragZ;a++) {
-		if (binSz[a] != NULL) {
-			for (size_t b = 0;b < maxBin;b++) {
-				if (binSz[a][b] > 0) delete[] bins[a][b];
+	if (params) {
+		for (int a = 0;a < params->maxFragZ;a++) {
+			if (binSz[a] != NULL) {
+				for (size_t b = 0;b < maxBin;b++) {
+					if (binSz[a][b] > 0) delete[] bins[a][b];
+				}
+				delete[] bins[a];
+				delete[] binSz[a];
 			}
-			delete[] bins[a];
-			delete[] binSz[a];
 		}
+		delete[] bins;
+		delete[] binSz;
 	}
-	delete[] bins;
-	delete[] binSz;
 }
 
 /// <summary>

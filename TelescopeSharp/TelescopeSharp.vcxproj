@@ -43,14 +43,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>true</CLRSupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>true</CLRSupport>
@@ -124,7 +124,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\Software\SchweppeLab\TelescopePublic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -137,17 +137,17 @@
     <ClInclude Include="TelescopeSharp.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\DB.cpp" />
-    <ClCompile Include="..\DBManager.cpp" />
-    <ClCompile Include="..\FastXCorr.cpp" />
-    <ClCompile Include="..\FIManager.cpp" />
-    <ClCompile Include="..\FIMask.cpp" />
-    <ClCompile Include="..\FIMemoryManager.cpp" />
-    <ClCompile Include="..\FISpectrum.cpp" />
-    <ClCompile Include="..\FragmentIonIndex.cpp" />
-    <ClCompile Include="..\ParamsManager.cpp" />
-    <ClCompile Include="..\Threading.cpp" />
-    <ClCompile Include="..\TopScore.cpp" />
+    <ClCompile Include="..\src\DB.cpp" />
+    <ClCompile Include="..\src\DBManager.cpp" />
+    <ClCompile Include="..\src\FastXCorr.cpp" />
+    <ClCompile Include="..\src\FIManager.cpp" />
+    <ClCompile Include="..\src\FIMask.cpp" />
+    <ClCompile Include="..\src\FIMemoryManager.cpp" />
+    <ClCompile Include="..\src\FISpectrum.cpp" />
+    <ClCompile Include="..\src\FragmentIonIndex.cpp" />
+    <ClCompile Include="..\src\ParamsManager.cpp" />
+    <ClCompile Include="..\src\Threading.cpp" />
+    <ClCompile Include="..\src\TopScore.cpp" />
     <ClCompile Include="TelescopeSharp.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

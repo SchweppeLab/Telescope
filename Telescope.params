@@ -1,0 +1,37 @@
+#Search Parameters
+threads = 1
+precursor_ppm = 20.0  #+/- this amount
+psm_per_scan = 3
+
+#Data to analyze
+data_file = <path>  # give a full or relative path to an mzML file, mzXML file, or Thermo raw file if supported.
+
+
+#FASTA Database information
+database = <path> # give full or relative path to a FASTA protein sequence database.
+max_missed_cleavage = 2  
+enzyme_specificity = 0    # 0 = full, 1 = semi
+min_peptide_length = 8
+max_peptide_length = 40
+min_peptide_mass = 800.0
+max_peptide_mass = 4000.0
+static_modification = 57.021464 C CAM
+
+#Multiple variable modifications are allowed by specifying them on each line
+#The format is modification mass, maximum allowed per peptide, amino acid(s), identifier
+#Amino acids must be upper case, c- and n- terminus use lowercase c and n.
+variable_modification = 15.994900 3 M Oxidation
+#variable_modification = 42.010565 1 n Acetylation
+#variable_modification = 22.010565 1 c Cmod
+#variable_modification = 79.966331 2 STY Phosphorylation
+max_peptide_modification = 5	#maximum combined variable modifications allowed per peptide
+
+
+#Spectral Processing Parameters
+bin_size = 0.02
+min_mz = 20.0
+max_mz = 4000.0
+max_frag_z = 3
+min_peak_xcorr = 2  #1e-6 is the recommended minimum
+xcorr = 1           #0 = off, 1 = on
+ultra_xcorr = 1		#0 = off, 1 = on
