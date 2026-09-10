@@ -32,7 +32,7 @@ Telescope is developed and tested on 64-bit Windows with Visual Studio 2022. Onl
 
 * Visual Studio 2022 with the *Desktop development with C++* workload.
 * [MSToolkit](https://github.com/mhoopmann/mstoolkit), used to read spectral data files. By default MSToolkit, and therefore Telescope, is compiled with support for Thermo `.raw` files, which requires Thermo's MSFileReader to be installed on the build machine. To build without it, define `_NO_THERMORAW` when compiling both MSToolkit and Telescope.
-* [NeoPepXMLParser](https://github.com/mhoopmann/NeoPepXMLParser), used to write pepXML results. It requires expat, which MSToolkit bundles.
+* [NeoPepXMLParser](https://github.com/mhoopmann/NeoPepXMLParser), used to write pepXML results. Telescope uses the prebuilt Windows dev kit from the NeoPepXMLParser releases page and links its static library. The kit bundles its own copy of expat, which Telescope does not use: expat comes from MSToolkit, so the program contains exactly one copy.
 
 **TelescopeSharp**
 
@@ -49,28 +49,26 @@ Telescope is developed and tested on 64-bit Windows with Visual Studio 2022. Onl
 
 ### Using the provided solution (recommended)
 
-1. Clone MSToolkit and NeoPepXMLParser beside this repository, so that the three directories are siblings:
+1. Clone MSToolkit beside this repository. Download the NeoPepXMLParser Windows dev kit (`NeoPepXMLParser-<version>-windows-x64.zip` from its [releases page](https://github.com/mhoopmann/NeoPepXMLParser/releases)) and unpack it into a `Libs` folder beside this repository:
 
    ```
    mstoolkit\
-   NeoPepXMLParser\
+   Libs\NeoPepXMLParser-<version>-windows-x64\     the unpacked kit, containing include\, lib\, and bin\
    Telescope\
    ```
 
-   The Telescope project looks for them there by default, and no further configuration is needed. Other locations work too; see step 3.
-2. Build the two dependencies for Release, x64, using the same v143 toolset as Telescope:
-   * MSToolkit: open `VisualStudio\MSToolkit.sln` in its repository and build. Its projects specify the older v142 toolset, so accept Visual Studio's offer to retarget them, or from a command line run `msbuild VisualStudio\MSToolkit.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143`.
-   * NeoPepXMLParser: open `VisualStudio\NeoPepXMLParser.sln` in its repository and build. It takes the expat headers from the sibling `mstoolkit` directory by default.
+   The Telescope project looks for MSToolkit there by default and uses the newest NeoPepXMLParser kit it finds in `Libs`, taking the last in name order, which is the highest version as long as the version numbers keep the same number of digits. A kit unpacked directly beside the repository under the name `NeoPepXMLParser` also works. Other locations work too; see step 3.
+2. Build MSToolkit for Release, x64, using the same v143 toolset as Telescope: open `VisualStudio\MSToolkit.sln` in its repository and build. Its projects specify the older v142 toolset, so accept Visual Studio's offer to retarget them, or from a command line run `msbuild VisualStudio\MSToolkit.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143`. This produces `MSToolkit.lib` and `MSToolkitExtern.lib` in `mstoolkit\VisualStudio\x64\Release\`.
 
-   Each produces a static library: `MSToolkit.lib` and `MSToolkitExtern.lib` in `mstoolkit\VisualStudio\x64\Release\`, and `NeoPepXMLParser.lib` in `NeoPepXMLParser\VisualStudio\x64\Release\`.
-3. If the dependencies live somewhere else, tell the Telescope project where to find them. Create a file named `Dependencies.local.props` in the `Telescope\` directory (next to `Telescope.vcxproj`) with the following contents, adjusting the two paths:
+   NeoPepXMLParser needs no build. The kit ships `NeoPepXMLParser_static.lib` in its `lib` folder, already built with v143 against the dynamic runtime.
+3. If the dependencies live somewhere else, tell the Telescope project where to find them. Create a file named `Dependencies.local.props` in the `Telescope\` directory (next to `Telescope.vcxproj`) with the following contents, adjusting the two paths (`NeoPepXMLParserDir` is the root of the unpacked kit, the folder that contains `include` and `lib`):
 
    ```xml
    <?xml version="1.0" encoding="utf-8"?>
    <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
      <PropertyGroup>
        <MSToolkitDir>C:\path\to\mstoolkit</MSToolkitDir>
-       <NeoPepXMLParserDir>C:\path\to\NeoPepXMLParser</NeoPepXMLParserDir>
+       <NeoPepXMLParserDir>C:\path\to\NeoPepXMLParser-1.1.0-windows-x64</NeoPepXMLParserDir>
      </PropertyGroup>
    </Project>
    ```
@@ -86,7 +84,7 @@ Build output is written to `Telescope\x64\Release\` for the two C++ projects and
 
 If you are using a different build system, the solution does the following.
 
-* **Telescope** compiles every `.cpp` file in `src/` into one console executable. Add the MSToolkit `include` and `include\extern` directories and the NeoPepXMLParser directory to the include path. Link against `MSToolkit.lib`, `MSToolkitExtern.lib`, and `NeoPepXMLParser.lib`. Define `_CRT_SECURE_NO_WARNINGS` and `NDEBUG`.
+* **Telescope** compiles every `.cpp` file in `src/` into one console executable. Add the MSToolkit `include` and `include\extern` directories and the kit's `include` directory to the include path, in that order so that any expat header is taken from MSToolkit. Link against `MSToolkit.lib`, `MSToolkitExtern.lib`, and `NeoPepXMLParser_static.lib`. Do not link the kit's `libexpatMD.lib`; MSToolkitExtern already contains expat. Define `_CRT_SECURE_NO_WARNINGS`, `NDEBUG`, and `NEOPEPXML_STATIC_DEFINE`.
 * **TelescopeSharp** compiles `TelescopeSharp\TelescopeSharp.cpp` with common language runtime support (`/clr`) together with these engine sources from `src/`: `DB.cpp`, `DBManager.cpp`, `FastXCorr.cpp`, `FIManager.cpp`, `FIMask.cpp`, `FIMemoryManager.cpp`, `FISpectrum.cpp`, `FragmentIonIndex.cpp`, `ParamsManager.cpp`, `Threading.cpp`, and `TopScore.cpp`. Add `src/` to the include path. The output is a DLL.
 * **TelescopeRTS** is a standard .NET SDK project. It references the TelescopeSharp project and `CometWrapper.dll`, and restores its NuGet packages on build.
 

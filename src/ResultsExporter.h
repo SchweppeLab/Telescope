@@ -4,7 +4,7 @@
 #include "DataLoader.h"
 #include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
-#include "NeoPepXMLParser.h"
+#include "NeoPepXMLParser/NeoPepXMLParser.h"
 #include "ParamsManager.h"
 
 /// <summary>

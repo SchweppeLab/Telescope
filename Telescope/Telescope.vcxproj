@@ -27,15 +27,24 @@
     <ProjectName>Telescope</ProjectName>
   </PropertyGroup>
   <!--
-    External dependency locations. By default MSToolkit and NeoPepXMLParser are expected to be
-    cloned beside this repository. To use other locations, either set the MSToolkitDir and
-    NeoPepXMLParserDir environment variables, pass them on the msbuild command line
-    (/p:MSToolkitDir=...), or create Dependencies.local.props next to this file with the same two
-    properties. Dependencies.local.props is ignored by git so per-machine paths stay out of the repo.
+    External dependency locations. MSToolkitDir is an MSToolkit source clone built with its own
+    Visual Studio solution; by default a sibling of this repository named mstoolkit.
+    NeoPepXMLParserDir is the root of an unpacked NeoPepXMLParser Windows dev kit (the folder
+    containing include\ and lib\); Telescope links the kit's static library and takes expat from
+    MSToolkit, not from the kit. By default it is the newest kit matching
+    NeoPepXMLParser-*-windows-x64 in a Libs folder beside this repository, where "newest" is the
+    last in name order (correct as long as version numbers keep the same number of digits), or
+    failing that a sibling folder named NeoPepXMLParser. To use other locations, either set the
+    MSToolkitDir and NeoPepXMLParserDir environment variables, pass them on the msbuild command
+    line (/p:MSToolkitDir=...), or create Dependencies.local.props next to this file with the same
+    two properties. That file is ignored by git so per-machine paths stay out of the repo.
   -->
   <Import Project="$(MSBuildThisFileDirectory)Dependencies.local.props" Condition="exists('$(MSBuildThisFileDirectory)Dependencies.local.props')" />
   <PropertyGroup Label="Dependencies">
     <MSToolkitDir Condition="'$(MSToolkitDir)' == ''">$(MSBuildThisFileDirectory)..\..\mstoolkit</MSToolkitDir>
+    <_NeoPepXMLParserLibsDir>$(MSBuildThisFileDirectory)..\..\Libs</_NeoPepXMLParserLibsDir>
+    <_NeoPepXMLParserKits Condition="'$(NeoPepXMLParserDir)' == '' and Exists('$(_NeoPepXMLParserLibsDir)')">$([System.IO.Directory]::GetDirectories('$(_NeoPepXMLParserLibsDir)', 'NeoPepXMLParser-*-windows-x64'))</_NeoPepXMLParserKits>
+    <NeoPepXMLParserDir Condition="'$(NeoPepXMLParserDir)' == '' and '$(_NeoPepXMLParserKits)' != ''">$(_NeoPepXMLParserKits.Substring($([MSBuild]::Add($(_NeoPepXMLParserKits.LastIndexOf(';')), 1))))</NeoPepXMLParserDir>
     <NeoPepXMLParserDir Condition="'$(NeoPepXMLParserDir)' == ''">$(MSBuildThisFileDirectory)..\..\NeoPepXMLParser</NeoPepXMLParserDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,17 +138,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;NEOPEPXML_STATIC_DEFINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(MSToolkitDir)\include;$(MSToolkitDir)\include\extern;$(NeoPepXMLParserDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSToolkitDir)\include;$(MSToolkitDir)\include\extern;$(NeoPepXMLParserDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(MSToolkitDir)\VisualStudio\$(Platform)\$(Configuration);$(NeoPepXMLParserDir)\VisualStudio\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MSToolkit.lib;MSToolkitExtern.lib;NeoPepXMLParser.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(MSToolkitDir)\VisualStudio\$(Platform)\$(Configuration);$(NeoPepXMLParserDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MSToolkit.lib;MSToolkitExtern.lib;NeoPepXMLParser_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
