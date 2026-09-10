@@ -137,7 +137,7 @@ All parameters:
 | `threads` | 18 | Number of concurrent search threads. |
 | `precursor_ppm` | 20 | Precursor mass tolerance in parts per million, applied symmetrically. |
 | `psm_per_scan` | 5 | Number of top-scoring peptides written to the pepXML file for each spectrum. |
-| `expect` | 0 | Set to 1 to estimate an expectation value (e-value) for each top score. This can increase the search space. |
+| `expect` | 0 | Set to 1 to estimate an expectation value (e-value) for each top score. This can increase the search space. This feature is still under active development, so use with caution. |
 | `bin_size` | 0.02 | Width in m/z of the bins used to match fragment ions. |
 | `min_mz` | 200 | Lowest fragment m/z considered. |
 | `max_mz` | 2000 | Highest fragment m/z considered. |
