@@ -10,7 +10,7 @@ The repository contains three projects that build from a single Visual Studio so
 
 | Project | Type | Purpose |
 |---|---|---|
-| **Telescope** | C++ console application | The search engine and its command-line interface. It digests a FASTA database, builds the fragment ion index, searches every MS/MS spectrum in one or more data files, and writes the results in pepXML format. |
+| **Telescope** | C++ console application | The search engine and its command-line interface. It digests a FASTA database, builds the fragment ion index, searches every MS/MS spectrum in one or more data files, and writes the results in [pepXML](http://tools.proteomecenter.org/wiki/formats_pepxml.html) format. |
 | **TelescopeSharp** | C++/CLI class library | A thin .NET wrapper around the engine. It exposes index building and single-spectrum searching to C#, so that Telescope can be embedded in .NET applications such as instrument control or RTS software. |
 | **TelescopeRTS** | C# Windows Forms application | A demonstration and test bed for RTS. It replays the MS/MS scans of a Thermo `.raw` file at a chosen rate to simulate a live acquisition, searches each scan as it arrives, and reports throughput and timing statistics. Comet can be selected in place of Telescope for side-by-side comparison. |
 
@@ -102,7 +102,7 @@ Telescope.exe Telescope.params
 
 An example parameters file, `Telescope.params`, is provided at the root of the repository. Copy it, replace the `<path>` placeholders on the `database` and `data_file` lines with your FASTA file and spectral data file, and adjust the remaining values as needed. Running Telescope with no argument prints the version and a usage line.
 
-Telescope prints its progress through each stage (FASTA digestion, index generation, spectrum loading, search, and export) along with timing statistics. For each `data_file` in the parameters file it writes one pepXML result file next to that data file, replacing the data file's extension with `ts.pep.xml`. For example, searching `sample.mzML` produces `sample.ts.pep.xml` in the same directory.
+Telescope prints its progress through each stage (FASTA digestion, index generation, spectrum loading, search, and export) along with timing statistics. For each `data_file` in the parameters file it writes one [pepXML](http://tools.proteomecenter.org/wiki/formats_pepxml.html) result file next to that data file, replacing the data file's extension with `ts.pep.xml`. For example, searching `sample.mzML` produces `sample.ts.pep.xml` in the same directory.
 
 Listing several `data_file` lines searches each file in turn against the same index, so the database is digested and indexed only once.
 

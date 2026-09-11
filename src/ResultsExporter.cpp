@@ -216,7 +216,7 @@ bool ResultsExporter::Write(const std::string& fn, DataLoader& scans) {
   CnpxSearchSummary ss;
   ss.search_engine = "Telescope";
   ss.base_name = rs.base_name;
-  ss.search_engine_version = "Unstoppable!!!";
+  ss.search_engine_version = T_VERSION;
   ss.precursor_mass_type = "monoisotopic";
   ss.fragment_mass_type = "monoisotopic";
   ss.search_id = 1;
