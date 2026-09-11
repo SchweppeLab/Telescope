@@ -5,12 +5,12 @@ VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Telescope", "Telescope.vcxproj", "{36925F6A-619F-4E3D-BBA0-430CB0ADAADA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TelescopeSharp", "TelescopeSharp\TelescopeSharp.vcxproj", "{AF005932-A77C-4749-8AA6-D739A9742431}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TelescopeSharp", "..\TelescopeSharp\TelescopeSharp.vcxproj", "{AF005932-A77C-4749-8AA6-D739A9742431}"
 	ProjectSection(ProjectDependencies) = postProject
 		{36925F6A-619F-4E3D-BBA0-430CB0ADAADA} = {36925F6A-619F-4E3D-BBA0-430CB0ADAADA}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelescopeRTS", "TelescopeRTS\TelescopeRTS.csproj", "{0D04EEDC-50B2-4D33-B166-5458DC3541AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelescopeRTS", "..\TelescopeRTS\TelescopeRTS.csproj", "{0D04EEDC-50B2-4D33-B166-5458DC3541AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

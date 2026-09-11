@@ -263,16 +263,16 @@ bool TelescopeManager::SearchSpectra(bool echo) {
 		cout << (double)duration_milliseconds.count() / scans.Size() << " ms average per scan." << endl;
 
 		//Build histogram
-		vector<int> uHisto;
-		for (size_t a = 0;a < scans.Size();a++) {
-			int tm = scans[a].searchTime_us+scans[a].processTime_us;
-			while (tm /100 >= uHisto.size()) uHisto.push_back(0);
-			uHisto[tm /100]++;
-		}
-		cout << "Microseconds\tScanCount" << endl;
-		for (size_t a = 0;a < uHisto.size();a++) {
-			cout << a*100 << "\t" << uHisto[a] << endl;
-		}
+		//vector<int> uHisto;
+		//for (size_t a = 0;a < scans.Size();a++) {
+		//	int tm = scans[a].searchTime_us+scans[a].processTime_us;
+		//	while (tm /100 >= uHisto.size()) uHisto.push_back(0);
+		//	uHisto[tm /100]++;
+		//}
+		//cout << "Microseconds\tScanCount" << endl;
+		//for (size_t a = 0;a < uHisto.size();a++) {
+		//	cout << a*100 << "\t" << uHisto[a] << endl;
+		//}
 	}
 
 	return true;

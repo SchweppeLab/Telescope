@@ -1,6 +1,9 @@
 #ifndef _TELESCOPEMANAGER_H
 #define _TELESCOPEMANAGER_H
 
+#define T_VERSION "1.0.1"
+#define T_BDATE "11 SEP 2026"
+
 #define DATALOADER
 
 #include "DataLoader.h"

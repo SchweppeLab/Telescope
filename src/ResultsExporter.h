@@ -4,8 +4,9 @@
 #include "DataLoader.h"
 #include "FragmentIonIndex.h"
 #include "GlobalDefinitions.h"
-#include "NeoPepXMLParser.h"
+#include "NeoPepXMLParser/NeoPepXMLParser.h"
 #include "ParamsManager.h"
+#include "TelescopeManager.h"
 
 /// <summary>
 /// Exports Telescope search results in PepXML format.

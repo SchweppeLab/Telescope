@@ -26,6 +26,27 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>Telescope</ProjectName>
   </PropertyGroup>
+  <!--
+    External dependency locations. MSToolkitDir is an MSToolkit source clone built with its own
+    Visual Studio solution; by default a sibling of this repository named mstoolkit.
+    NeoPepXMLParserDir is the root of an unpacked NeoPepXMLParser Windows dev kit (the folder
+    containing include\ and lib\); Telescope links the kit's static library and takes expat from
+    MSToolkit, not from the kit. By default it is the newest kit matching
+    NeoPepXMLParser-*-windows-x64 in a Libs folder beside this repository, where "newest" is the
+    last in name order (correct as long as version numbers keep the same number of digits), or
+    failing that a sibling folder named NeoPepXMLParser. To use other locations, either set the
+    MSToolkitDir and NeoPepXMLParserDir environment variables, pass them on the msbuild command
+    line (/p:MSToolkitDir=...), or create Dependencies.local.props next to this file with the same
+    two properties. That file is ignored by git so per-machine paths stay out of the repo.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)Dependencies.local.props" Condition="exists('$(MSBuildThisFileDirectory)Dependencies.local.props')" />
+  <PropertyGroup Label="Dependencies">
+    <MSToolkitDir Condition="'$(MSToolkitDir)' == ''">$(MSBuildThisFileDirectory)..\..\mstoolkit</MSToolkitDir>
+    <_NeoPepXMLParserLibsDir>$(MSBuildThisFileDirectory)..\..\Libs</_NeoPepXMLParserLibsDir>
+    <_NeoPepXMLParserKits Condition="'$(NeoPepXMLParserDir)' == '' and Exists('$(_NeoPepXMLParserLibsDir)')">$([System.IO.Directory]::GetDirectories('$(_NeoPepXMLParserLibsDir)', 'NeoPepXMLParser-*-windows-x64'))</_NeoPepXMLParserKits>
+    <NeoPepXMLParserDir Condition="'$(NeoPepXMLParserDir)' == '' and '$(_NeoPepXMLParserKits)' != ''">$(_NeoPepXMLParserKits.Substring($([MSBuild]::Add($(_NeoPepXMLParserKits.LastIndexOf(';')), 1))))</NeoPepXMLParserDir>
+    <NeoPepXMLParserDir Condition="'$(NeoPepXMLParserDir)' == ''">$(MSBuildThisFileDirectory)..\..\NeoPepXMLParser</NeoPepXMLParserDir>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -117,57 +138,54 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;NEOPEPXML_STATIC_DEFINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\Software\General\MSToolkit\include;D:\Software\General\MSToolkit\include\extern;D:\Software\General\NeoPepXMLParser;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSToolkitDir)\include;$(MSToolkitDir)\include\extern;$(NeoPepXMLParserDir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Software\General\MSToolkit\VisualStudio\x64\Release;D:\Software\General\NeoPepXMLParser\NeoPepXMLParser\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>MSToolkit.lib;MSToolkitExtern.lib;NeoPepXMLParser.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(MSToolkitDir)\VisualStudio\$(Platform)\$(Configuration);$(NeoPepXMLParserDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>MSToolkit.lib;MSToolkitExtern.lib;NeoPepXMLParser_static.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="DataLoader.cpp" />
-    <ClCompile Include="DB.cpp" />
-    <ClCompile Include="FIMask.cpp" />
-    <ClCompile Include="FIMemoryManager.cpp" />
-    <ClCompile Include="FragmentIonIndex.cpp" />
-    <ClCompile Include="ParamsManager.cpp" />
-    <ClCompile Include="ResultsExporter.cpp" />
-    <ClCompile Include="Telescope.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">D:\Software\General\DBaser;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <ClCompile Include="DBManager.cpp" />
-    <ClCompile Include="FastXCorr.cpp" />
-    <ClCompile Include="FIManager.cpp" />
-    <ClCompile Include="FISpectrum.cpp" />
-    <ClCompile Include="TelescopeManager.cpp" />
-    <ClCompile Include="Threading.cpp" />
-    <ClCompile Include="TopScore.cpp" />
+    <ClCompile Include="..\src\DataLoader.cpp" />
+    <ClCompile Include="..\src\DB.cpp" />
+    <ClCompile Include="..\src\FIMask.cpp" />
+    <ClCompile Include="..\src\FIMemoryManager.cpp" />
+    <ClCompile Include="..\src\FragmentIonIndex.cpp" />
+    <ClCompile Include="..\src\ParamsManager.cpp" />
+    <ClCompile Include="..\src\ResultsExporter.cpp" />
+    <ClCompile Include="..\src\Telescope.cpp" />
+    <ClCompile Include="..\src\DBManager.cpp" />
+    <ClCompile Include="..\src\FastXCorr.cpp" />
+    <ClCompile Include="..\src\FIManager.cpp" />
+    <ClCompile Include="..\src\FISpectrum.cpp" />
+    <ClCompile Include="..\src\TelescopeManager.cpp" />
+    <ClCompile Include="..\src\Threading.cpp" />
+    <ClCompile Include="..\src\TopScore.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DataLoader.h" />
-    <ClInclude Include="DB.h" />
-    <ClInclude Include="DBManager.h" />
-    <ClInclude Include="FastXCorr.h" />
-    <ClInclude Include="FIManager.h" />
-    <ClInclude Include="FIMemoryManager.h" />
-    <ClInclude Include="FISpectrum.h" />
-    <ClInclude Include="FragmentIonIndex.h" />
-    <ClInclude Include="GlobalDefinitions.h" />
-    <ClInclude Include="FIMask.h" />
-    <ClInclude Include="OSSpecificThreading.h" />
-    <ClInclude Include="ParamsManager.h" />
-    <ClInclude Include="ResultsExporter.h" />
-    <ClInclude Include="TelescopeManager.h" />
-    <ClInclude Include="Threading.h" />
-    <ClInclude Include="ThreadPool.h" />
-    <ClInclude Include="TopScore.h" />
+    <ClInclude Include="..\src\DataLoader.h" />
+    <ClInclude Include="..\src\DB.h" />
+    <ClInclude Include="..\src\DBManager.h" />
+    <ClInclude Include="..\src\FastXCorr.h" />
+    <ClInclude Include="..\src\FIManager.h" />
+    <ClInclude Include="..\src\FIMemoryManager.h" />
+    <ClInclude Include="..\src\FISpectrum.h" />
+    <ClInclude Include="..\src\FragmentIonIndex.h" />
+    <ClInclude Include="..\src\GlobalDefinitions.h" />
+    <ClInclude Include="..\src\FIMask.h" />
+    <ClInclude Include="..\src\OSSpecificThreading.h" />
+    <ClInclude Include="..\src\ParamsManager.h" />
+    <ClInclude Include="..\src\ResultsExporter.h" />
+    <ClInclude Include="..\src\TelescopeManager.h" />
+    <ClInclude Include="..\src\Threading.h" />
+    <ClInclude Include="..\src\ThreadPool.h" />
+    <ClInclude Include="..\src\TopScore.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
